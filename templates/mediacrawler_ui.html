@@ -1,0 +1,560 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaCrawler 爬虫控制台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .platform-select {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .platform-option {
+            position: relative;
+        }
+        
+        .platform-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .platform-option label {
+            display: block;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            margin-bottom: 0;
+        }
+        
+        .platform-option input[type="radio"]:checked + label {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        .platform-option label:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .nav-links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+        }
+        
+        .info-box p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕷️ MediaCrawler 爬虫控制台</h1>
+        <p class="subtitle">选择平台、爬取类型和关键词，开始爬取数据</p>
+        
+        <div class="info-box">
+            <p><strong>提示：</strong></p>
+            <p>• 首次使用需要扫码登录（会自动保存登录状态）</p>
+            <p>• 数据会自动保存为JSON格式</p>
+            <p>• 爬取完成后可在"查看数据"页面查看结果</p>
+        </div>
+        
+        <form id="crawlerForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label>选择平台 * (可多选)</label>
+                <div class="platform-select">
+                    {% for platform in platforms %}
+                    <div class="platform-option">
+                        <input type="checkbox" id="platform_{{ platform.code }}" name="platform" value="{{ platform.code }}">
+                        <label for="platform_{{ platform.code }}">{{ platform.name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <small style="color: #666; margin-top: 10px; display: block;">提示: 可以选择多个平台同时爬取</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="keywords">搜索关键词 * (多个关键词用逗号分隔)</label>
+                <input type="text" id="keywords" name="keywords" required placeholder="例如: 华为,小米">
+            </div>
+            
+            <div class="form-group">
+                <label for="max_items">最大爬取数量</label>
+                <input type="number" id="max_items" name="max_items" value="10" min="1" max="1000">
+            </div>
+            
+            <div class="form-group" id="note_type_group">
+                <label for="note_type">笔记类型</label>
+                <select id="note_type" name="note_type">
+                    {% for note_type in note_types %}
+                    <option value="{{ note_type.code }}">{{ note_type.name }}</option>
+                    {% endfor %}
+                </select>
+                <small style="color: #666; margin-top: 5px; display: block;" id="note_type_hint">注意：仅小红书支持此选项</small>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="include_comments" name="include_comments" checked>
+                    <label for="include_comments">爬取一级评论</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="include_sub_comments" name="include_sub_comments">
+                    <label for="include_sub_comments">爬取二级评论（回复）</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">开始爬取</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>正在启动爬取任务，请稍候...</p>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">任务在后台执行，请查看终端窗口了解详情</p>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="nav-links">
+            <a href="/api/v1/mediacrawler/data?platform=xhs&data_type=contents" target="_blank">查看数据</a>
+            <a href="/docs" target="_blank">API文档</a>
+        </div>
+    </div>
+    
+    <script>
+        // 平台特性数据
+        const platformFeatures = {
+            {% for platform in platforms %}
+            "{{ platform.code }}": {
+                supports_note_type: {{ "true" if platform.supports_note_type else "false" }}
+            },
+            {% endfor %}
+        };
+        
+        // 监听平台选择变化（多选）
+        function updateNoteTypeVisibility() {
+            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platform"]:checked'))
+                .map(cb => cb.value);
+            const noteTypeGroup = document.getElementById('note_type_group');
+            const noteTypeHint = document.getElementById('note_type_hint');
+            
+            if (selectedPlatforms.length === 0) {
+                noteTypeGroup.style.display = 'none';
+                return;
+            }
+            
+            // 检查是否有小红书（支持笔记类型）
+            const hasXHS = selectedPlatforms.includes('xhs');
+            if (hasXHS && selectedPlatforms.length === 1) {
+                // 只选择了小红书
+                noteTypeGroup.style.display = 'block';
+                noteTypeHint.textContent = '选择笔记类型（全部/视频/图文）';
+            } else if (hasXHS) {
+                // 选择了小红书和其他平台
+                noteTypeGroup.style.display = 'block';
+                noteTypeHint.textContent = '注意：笔记类型仅对小红书有效，其他平台将使用默认值';
+            } else {
+                // 没有选择小红书
+                noteTypeGroup.style.display = 'block';
+                noteTypeHint.textContent = '注意：此平台不支持笔记类型选择，将使用默认值';
+                document.getElementById('note_type').value = 'all';
+            }
+        }
+        
+        // 为所有平台复选框添加事件监听
+        document.querySelectorAll('input[name="platform"]').forEach(checkbox => {
+            checkbox.addEventListener('change', updateNoteTypeVisibility);
+        });
+        
+        // 初始化时隐藏笔记类型（等待用户选择平台）
+        document.addEventListener('DOMContentLoaded', function() {
+            const noteTypeGroup = document.getElementById('note_type_group');
+            noteTypeGroup.style.display = 'none';
+        });
+        
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // 获取选中的平台（多选）
+            const selectedPlatforms = Array.from(form.querySelectorAll('input[name="platform"]:checked'))
+                .map(cb => cb.value);
+            
+            if (selectedPlatforms.length === 0) {
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = '<h3>❌ 请至少选择一个平台</h3>';
+                return;
+            }
+            
+            // 验证关键词
+            const keywords = form.keywords.value.trim();
+            if (!keywords) {
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = '<h3>❌ 请输入关键词</h3>';
+                return;
+            }
+            
+            // 构建表单数据
+            const formData = new FormData();
+            formData.append('platforms', selectedPlatforms.join(','));
+            formData.append('keywords', keywords);
+            formData.append('max_items', form.max_items.value || '10');
+            formData.append('note_type', form.note_type.value || 'all');
+            formData.append('include_comments', form.include_comments.checked ? 'true' : 'false');
+            formData.append('include_sub_comments', form.include_sub_comments.checked ? 'true' : 'false');
+            
+            // 打印FormData内容用于调试
+            console.log('FormData内容:');
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+            
+            // 显示加载状态
+            loading.classList.add('show');
+            result.style.display = 'none';
+            submitBtn.disabled = true;
+            
+            try {
+                console.log('发送爬取请求...', {
+                    platforms: selectedPlatforms,
+                    keywords: form.keywords.value,
+                    max_items: form.max_items.value
+                });
+                
+                // 打印FormData内容用于调试
+                console.log('FormData内容:');
+                for (let pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);
+                }
+                
+                // 使用绝对URL，避免相对路径问题
+                const apiUrl = window.location.origin + '/api/v1/mediacrawler/start';
+                console.log('请求URL:', apiUrl);
+                console.log('当前页面URL:', window.location.href);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('收到响应:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    // 尝试读取错误详情
+                    let errorDetail = '';
+                    let errorData = null;
+                    try {
+                        errorData = await response.json();
+                        console.error('错误响应数据:', errorData);
+                        
+                        // FastAPI的422错误通常返回detail数组
+                        if (errorData.detail) {
+                            if (Array.isArray(errorData.detail)) {
+                                // 处理验证错误数组
+                                errorDetail = errorData.detail.map(err => {
+                                    if (typeof err === 'object' && err.loc && err.msg) {
+                                        return `${err.loc.join('.')}: ${err.msg}`;
+                                    }
+                                    return JSON.stringify(err);
+                                }).join('\n');
+                            } else {
+                                errorDetail = errorData.detail;
+                            }
+                        } else {
+                            errorDetail = JSON.stringify(errorData, null, 2);
+                        }
+                    } catch (e) {
+                        try {
+                            errorDetail = await response.text();
+                            console.error('错误文本:', errorDetail);
+                        } catch (e2) {
+                            errorDetail = `无法解析错误信息: ${e2.message}`;
+                        }
+                    }
+                    
+                    // 创建详细的错误信息
+                    const errorMsg = `HTTP错误: ${response.status} ${response.statusText}`;
+                    const fullError = new Error(errorMsg);
+                    fullError.detail = errorDetail;
+                    fullError.errorData = errorData;
+                    throw fullError;
+                }
+                
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                // 隐藏加载状态
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+                
+                if (data.success) {
+                    // 跳转到监控页面
+                    // 优先使用monitor_urls数组的第一个URL
+                    if (data.monitor_urls && data.monitor_urls.length > 0) {
+                        window.location.href = data.monitor_urls[0];
+                    } else if (data.monitor_url) {
+                        window.location.href = data.monitor_url;
+                    } else if (data.process_ids && data.process_ids.length > 0) {
+                        // 使用process_ids数组的第一个ID
+                        window.location.href = `/api/v1/mediacrawler/crawl/monitor/${data.process_ids[0]}`;
+                    } else if (data.process_id) {
+                        // 兼容单个process_id的情况
+                        window.location.href = `/api/v1/mediacrawler/crawl/monitor/${data.process_id}`;
+                    } else {
+                        // 如果没有监控URL，显示结果
+                        result.style.display = 'block';
+                        result.className = 'result success';
+                        result.innerHTML = `
+                            <h3>✅ 爬取任务已启动！</h3>
+                            <p>但无法跳转到监控页面，请手动访问监控页面</p>
+                            <p>进程ID: ${data.process_ids ? data.process_ids.join(', ') : '未知'}</p>
+                        `;
+                    }
+                } else {
+                    // 显示错误
+                    result.style.display = 'block';
+                    result.className = 'result error';
+                    result.innerHTML = `<h3>❌ 启动失败</h3><p>${data.error || '未知错误'}</p>`;
+                }
+            } catch (error) {
+                console.error('请求失败:', error);
+                console.error('错误详情:', {
+                    name: error.name,
+                    message: error.message,
+                    detail: error.detail,
+                    errorData: error.errorData,
+                    stack: error.stack
+                });
+                
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+                result.style.display = 'block';
+                result.className = 'result error';
+                
+                let errorDetails = `<h3>❌ 请求失败</h3><p><strong>错误信息:</strong> ${error.message}</p>`;
+                
+                // 显示详细的错误信息
+                if (error.detail) {
+                    errorDetails += `<div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; font-size: 12px;"><strong>详细错误:</strong><pre style="white-space: pre-wrap; word-wrap: break-word;">${error.detail}</pre></div>`;
+                }
+                
+                if (error.errorData) {
+                    errorDetails += `<div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 12px;"><strong>错误数据:</strong><pre style="white-space: pre-wrap; word-wrap: break-word;">${JSON.stringify(error.errorData, null, 2)}</pre></div>`;
+                }
+                
+                // 检查是否是网络错误
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    errorDetails += `
+                        <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                            <strong>可能的原因：</strong><br>
+                            1. FastAPI服务未运行 - 请检查服务是否在运行<br>
+                            2. 服务地址错误 - 当前请求: /api/v1/mediacrawler/start<br>
+                            3. 网络连接问题 - 请检查网络连接<br>
+                            <br>
+                            <strong>解决方案：</strong><br>
+                            1. 确认FastAPI服务正在运行（应该能看到服务日志）<br>
+                            2. 检查服务地址是否正确（默认: http://localhost:8000）<br>
+                            3. 尝试刷新页面后重试<br>
+                            4. 查看浏览器Network标签了解详细错误
+                        </p>
+                    `;
+                } else {
+                    errorDetails += `
+                        <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                            请检查：<br>
+                            1. FastAPI服务是否正在运行<br>
+                            2. 浏览器控制台是否有更多错误信息<br>
+                            3. 网络连接是否正常<br>
+                            4. 查看浏览器Network标签了解详细错误
+                        </p>
+                    `;
+                }
+                
+                result.innerHTML = errorDetails;
+            }
+        }
+    </script>
+</body>
+</html>
+
+

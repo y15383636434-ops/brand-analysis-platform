@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据采集与分析平台 - 统一控制台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            overflow-x: hidden;
+        }
+        
+        /* 侧边栏样式 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 0 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .nav-item {
+            margin: 5px 0;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            border-left-color: white;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .nav-link i {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* 主内容区样式 */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            padding: 20px;
+            transition: margin-left 0.3s;
+        }
+        
+        .content-header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content-header h2 {
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .content-body {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            min-height: calc(100vh - 120px);
+        }
+        
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 1001;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 20px;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+        
+        /* 隐藏所有内容面板 */
+        .content-panel {
+            display: none;
+        }
+        
+        .content-panel.active {
+            display: block;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- 移动端菜单按钮 -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    
+    <!-- 侧边栏 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>📊 数据平台</h1>
+            <p>统一控制台</p>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a class="nav-link active" onclick="loadModuleWithIframe('mediacrawler', this)">
+                    <span>🕷️</span>
+                    <span>MediaCrawler爬虫</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadModuleWithIframe('monitor', this)">
+                    <span>📊</span>
+                    <span>爬取监控</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadModuleWithIframe('json-viewer', this)">
+                    <span>📄</span>
+                    <span>JSON数据查看</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadModuleWithIframe('data-analysis', this)">
+                    <span>🔍</span>
+                    <span>数据分析</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadModuleWithIframe('data-display', this)">
+                    <span>📈</span>
+                    <span>数据展示</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadModuleWithIframe('brands', this)">
+                    <span>🏢</span>
+                    <span>品牌管理</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="loadModuleWithIframe('crawler', this)">
+                    <span>🔄</span>
+                    <span>爬虫控制</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <div class="content-header">
+            <h2 id="pageTitle">MediaCrawler爬虫控制台</h2>
+            <div id="headerActions"></div>
+        </div>
+        <div class="content-body">
+            <div id="contentContainer">
+                <div class="loading">正在加载...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentModule = 'mediacrawler';
+        
+        // 切换侧边栏（移动端）
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+        
+        // 加载模块
+        async function loadModule(moduleName) {
+            // 更新导航状态
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.closest('.nav-link').classList.add('active');
+            
+            // 更新当前模块
+            currentModule = moduleName;
+            
+            // 更新标题
+            const titles = {
+                'mediacrawler': 'MediaCrawler爬虫控制台',
+                'monitor': '爬取任务监控',
+                'json-viewer': 'JSON数据查看器',
+                'data-analysis': '数据分析',
+                'data-display': '数据展示',
+                'brands': '品牌管理',
+                'crawler': '爬虫控制'
+            };
+            document.getElementById('pageTitle').textContent = titles[moduleName] || '控制台';
+            
+            // 显示加载状态
+            const container = document.getElementById('contentContainer');
+            container.innerHTML = '<div class="loading">正在加载...</div>';
+            
+            // 关闭移动端侧边栏
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+            
+            try {
+                // 根据模块加载不同的内容
+                let url = '';
+                switch(moduleName) {
+                    case 'mediacrawler':
+                        url = '/api/v1/mediacrawler';
+                        break;
+                    case 'monitor':
+                        url = '/api/v1/mediacrawler/monitor';
+                        break;
+                    case 'json-viewer':
+                        url = '/api/v1/mediacrawler/data';
+                        break;
+                    case 'data-analysis':
+                        url = '/api/v1/data-analysis';
+                        break;
+                    case 'data-display':
+                        url = '/api/v1/data';
+                        break;
+                    case 'brands':
+                        url = '/api/v1/brands';
+                        break;
+                    case 'crawler':
+                        url = '/api/v1/crawler';
+                        break;
+                    default:
+                        container.innerHTML = '<div class="empty-state"><h3>未知模块</h3><p>请选择正确的功能模块</p></div>';
+                        return;
+                }
+                
+                // 使用fetch获取HTML内容
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const html = await response.text();
+                
+                // 提取body内容（移除原页面的body标签和样式，只保留内容）
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // 获取body内容
+                const bodyContent = doc.body;
+                
+                // 提取样式（如果需要保留原页面样式）
+                const styles = doc.querySelectorAll('style');
+                let styleContent = '';
+                styles.forEach(style => {
+                    styleContent += style.textContent + '\n';
+                });
+                
+                // 创建新的容器
+                const newContainer = document.createElement('div');
+                newContainer.className = 'module-content';
+                
+                // 如果有样式，添加到head
+                if (styleContent) {
+                    const styleTag = document.createElement('style');
+                    styleTag.textContent = styleContent;
+                    // 为了避免样式冲突，给样式添加作用域
+                    styleTag.textContent = styleContent.replace(/([^{}]+){/g, (match, selector) => {
+                        // 为选择器添加作用域
+                        return `.module-content ${selector.trim()}{`;
+                    });
+                    document.head.appendChild(styleTag);
+                }
+                
+                // 复制body内容（排除script标签，稍后单独处理）
+                const scripts = [];
+                bodyContent.querySelectorAll('script').forEach(script => {
+                    scripts.push(script.textContent);
+                    script.remove();
+                });
+                
+                newContainer.innerHTML = bodyContent.innerHTML;
+                
+                // 替换容器内容
+                container.innerHTML = '';
+                container.appendChild(newContainer);
+                
+                // 执行脚本
+                scripts.forEach(scriptText => {
+                    try {
+                        // 创建新的函数作用域执行脚本
+                        const script = document.createElement('script');
+                        script.textContent = scriptText;
+                        container.appendChild(script);
+                    } catch (e) {
+                        console.error('执行脚本失败:', e);
+                    }
+                });
+                
+                // 调整iframe内容（如果有）
+                const iframes = container.querySelectorAll('iframe');
+                iframes.forEach(iframe => {
+                    iframe.style.width = '100%';
+                    iframe.style.height = '600px';
+                    iframe.style.border = 'none';
+                });
+                
+            } catch (error) {
+                console.error('加载模块失败:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>加载失败</h3>
+                        <p>错误信息: ${error.message}</p>
+                        <p style="margin-top: 20px;">
+                            <button onclick="loadModule('${moduleName}')" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                重试
+                            </button>
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        // 使用iframe方式加载（更简单可靠）
+        function loadModuleWithIframe(moduleName, eventElement) {
+            // 更新导航状态
+            let clickedLink = null;
+            if (eventElement) {
+                clickedLink = eventElement.closest('.nav-link');
+            } else {
+                // 如果没有传入元素，根据模块名查找对应的链接
+                clickedLink = document.querySelector(`.nav-link[onclick*="${moduleName}"]`);
+            }
+            
+            if (clickedLink) {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                clickedLink.classList.add('active');
+            }
+            
+            currentModule = moduleName;
+            
+            const titles = {
+                'mediacrawler': 'MediaCrawler爬虫控制台',
+                'monitor': '爬取任务监控',
+                'json-viewer': 'JSON数据查看器',
+                'data-analysis': '数据分析',
+                'data-display': '数据展示',
+                'brands': '品牌管理',
+                'crawler': '爬虫控制'
+            };
+            document.getElementById('pageTitle').textContent = titles[moduleName] || '控制台';
+            
+            const container = document.getElementById('contentContainer');
+            
+            let url = '';
+            switch(moduleName) {
+                case 'mediacrawler':
+                    url = '/api/v1/mediacrawler';
+                    break;
+                case 'monitor':
+                    url = '/api/v1/mediacrawler/monitor';
+                    break;
+                case 'json-viewer':
+                    url = '/api/v1/mediacrawler/data';
+                    break;
+                case 'data-analysis':
+                    url = '/api/v1/data-analysis';
+                    break;
+                case 'data-display':
+                    url = '/api/v1/data';
+                    break;
+                case 'brands':
+                    url = '/api/v1/brands/page';
+                    break;
+                case 'crawler':
+                    url = '/api/v1/crawler';
+                    break;
+                default:
+                    container.innerHTML = '<div class="empty-state"><h3>未知模块</h3><p>请选择正确的功能模块</p></div>';
+                    return;
+            }
+            
+            // 显示加载状态
+            container.innerHTML = '<div class="loading">正在加载模块...</div>';
+            
+            // 创建iframe
+            const iframe = document.createElement('iframe');
+            iframe.id = 'moduleIframe';
+            iframe.src = url;
+            iframe.style.cssText = 'width: 100%; height: calc(100vh - 200px); border: none; border-radius: 10px; background: white;';
+            iframe.onload = function() {
+                console.log('模块加载完成:', moduleName);
+                try {
+                    // 尝试调整iframe内容的高度（如果内容允许）
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        const body = iframeDoc.body;
+                        if (body) {
+                            // 移除原页面的padding，让内容填满iframe
+                            body.style.margin = '0';
+                            body.style.padding = '0';
+                        }
+                    }
+                } catch (e) {
+                    // 跨域限制，无法访问iframe内容（这是正常的）
+                    console.log('无法访问iframe内容（跨域限制，这是正常的）');
+                }
+            };
+            iframe.onerror = function() {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>加载失败</h3>
+                        <p>无法加载模块: ${moduleName}</p>
+                        <p style="margin-top: 20px;">
+                            <button onclick="loadModuleWithIframe('${moduleName}')" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                重试
+                            </button>
+                        </p>
+                    </div>
+                `;
+            };
+            
+            // 延迟一点再设置iframe，让加载状态显示一下
+            setTimeout(() => {
+                container.innerHTML = '';
+                container.appendChild(iframe);
+            }, 100);
+            
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+        
+        // 初始化：加载默认模块
+        window.addEventListener('DOMContentLoaded', function() {
+            // 使用iframe方式加载（更可靠）
+            loadModuleWithIframe('mediacrawler');
+        });
+        
+        // 导出函数供全局使用
+        window.loadModuleWithIframe = loadModuleWithIframe;
+    </script>
+</body>
+</html>
+

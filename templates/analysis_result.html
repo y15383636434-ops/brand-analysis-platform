@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析结果 - {{ platform_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .keyword-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .keyword-item {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .keyword-weight {
+            color: #667eea;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+        
+        .insights {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        
+        .nav-links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 分析结果</h1>
+        <p class="subtitle">平台: {{ platform_name }}</p>
+        
+        <div id="resultContainer">
+            <div class="loading">正在加载分析结果...</div>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/api/v1/data-analysis">返回数据分析</a>
+            <a href="/api/v1/mediacrawler">返回爬虫控制台</a>
+            <a href="/docs">API文档</a>
+        </div>
+    </div>
+    
+    <script>
+        const platform = '{{ platform }}';
+        
+        async function loadResults() {
+            const container = document.getElementById('resultContainer');
+            
+            try {
+                const url = platform 
+                    ? `/api/v1/data-analysis/result/list?platform=${platform}`
+                    : '/api/v1/data-analysis/result/list';
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success && data.results.length > 0) {
+                    // 显示最新的结果
+                    const latestResult = data.results[0];
+                    const result = latestResult.result;
+                    
+                    let html = '';
+                    
+                    // 处理数据统计
+                    html += `
+                        <div class="section">
+                            <h2>📈 数据统计</h2>
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-value">${result.processed_data.total_items}</div>
+                                    <div class="stat-label">总数据量</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${result.processed_data.total_texts}</div>
+                                    <div class="stat-label">文本数量</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${result.processed_data.total_comments}</div>
+                                    <div class="stat-label">评论数量</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${result.processed_data.file_count}</div>
+                                    <div class="stat-label">文件数量</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 情感分析
+                    if (result.sentiment_analysis) {
+                        const sentiment = result.sentiment_analysis;
+                        html += `
+                            <div class="section">
+                                <h2>😊 情感分析</h2>
+                                <div class="stats-grid">
+                                    <div class="stat-card">
+                                        <div class="stat-value">${sentiment.positive_count}</div>
+                                        <div class="stat-label">正面 (${sentiment.distribution.positive}%)</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-value">${sentiment.negative_count}</div>
+                                        <div class="stat-label">负面 (${sentiment.distribution.negative}%)</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-value">${sentiment.neutral_count}</div>
+                                        <div class="stat-label">中性 (${sentiment.distribution.neutral}%)</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-value">${sentiment.avg_score.toFixed(2)}</div>
+                                        <div class="stat-label">平均情感分数</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // 关键词
+                    if (result.keywords && result.keywords.length > 0) {
+                        html += `
+                            <div class="section">
+                                <h2>🔑 关键词分析</h2>
+                                <div class="keyword-list">
+                        `;
+                        result.keywords.forEach(kw => {
+                            html += `
+                                <div class="keyword-item">
+                                    ${kw.keyword}
+                                    <span class="keyword-weight">(${kw.weight.toFixed(3)})</span>
+                                </div>
+                            `;
+                        });
+                        html += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // LLM深度分析
+                    if (result.llm_insights && result.llm_insights.insights) {
+                        html += `
+                            <div class="section">
+                                <h2>🤖 AI深度分析</h2>
+                                <div class="insights">${result.llm_insights.insights}</div>
+                                ${result.llm_insights.model ? `<p style="margin-top: 10px; color: #666; font-size: 12px;">使用模型: ${result.llm_insights.model}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty">暂无分析结果</div>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="empty">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 页面加载时获取结果
+        loadResults();
+    </script>
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>品牌管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+        
+        .btn-primary:hover {
+            background: #f0f0f0;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .toolbar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .filter-group select {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            background: white;
+        }
+        
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .brands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        
+        .brand-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .brand-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .brand-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .brand-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+        
+        .brand-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .status-inactive {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .status-archived {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+        
+        .brand-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            min-height: 40px;
+        }
+        
+        .brand-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .keyword-tag {
+            padding: 4px 12px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .brand-platforms {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .platform-tag {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .platform-xhs { background: #ff2442; }
+        .platform-douyin { background: #000; }
+        .platform-weibo { background: #e6162d; }
+        .platform-zhihu { background: #0084ff; }
+        .platform-bilibili { background: #fb7299; }
+        .platform-kuaishou { background: #ff6600; }
+        
+        .brand-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .brand-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-action {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+        }
+        
+        .btn-view {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-view:hover {
+            background: #5568d3;
+        }
+        
+        .btn-edit {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #45a049;
+        }
+        
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #da190b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+            font-size: 16px;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+        }
+        
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .empty h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        
+        /* 模态窗口样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal-container {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            min-height: 50px;
+        }
+        
+        .tag-item {
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .tag-item .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .tag-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            min-width: 100px;
+        }
+        
+        .platform-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .platform-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .platform-checkbox-item input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+        
+        .platform-checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        
+        .modal-footer {
+            padding: 15px 25px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #f8f9fa;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .pagination button {
+            padding: 8px 15px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination span {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 品牌管理</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="refreshBrands()">🔄 刷新</button>
+                <button class="btn btn-primary" onclick="openCreateModal()">➕ 创建品牌</button>
+            </div>
+        </div>
+        
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索品牌名称、关键词..." onkeyup="handleSearch(event)">
+            </div>
+            <div class="filter-group">
+                <select id="statusFilter" onchange="filterBrands()">
+                    <option value="">全部状态</option>
+                    <option value="active">活跃</option>
+                    <option value="inactive">非活跃</option>
+                    <option value="archived">已归档</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="brandsContainer" class="loading">加载中...</div>
+        
+        <div id="paginationContainer"></div>
+    </div>
+    
+    <!-- 创建/编辑品牌模态窗口 -->
+    <div id="brandModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">创建品牌</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="brandForm" onsubmit="saveBrand(event)">
+                    <input type="hidden" id="brandId" value="">
+                    
+                    <div class="form-group">
+                        <label>品牌名称 *</label>
+                        <input type="text" id="brandName" required placeholder="请输入品牌名称">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>品牌描述</label>
+                        <textarea id="brandDescription" placeholder="请输入品牌描述"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>关键词</label>
+                        <div class="tags-input" id="keywordsContainer">
+                            <input type="text" class="tag-input" id="keywordInput" placeholder="输入关键词后按回车添加">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>平台选择</label>
+                        <div class="platform-checkboxes">
+                            <div class="platform-checkbox-item">
+                                <input type="checkbox" id="platform-xhs" value="xhs">
+                                <label for="platform-xhs">小红书</label>
+                            </div>
+                            <div class="platform-checkbox-item">
+                                <input type="checkbox" id="platform-douyin" value="douyin">
+                                <label for="platform-douyin">抖音</label>
+                            </div>
+                            <div class="platform-checkbox-item">
+                                <input type="checkbox" id="platform-weibo" value="weibo">
+                                <label for="platform-weibo">微博</label>
+                            </div>
+                            <div class="platform-checkbox-item">
+                                <input type="checkbox" id="platform-zhihu" value="zhihu">
+                                <label for="platform-zhihu">知乎</label>
+                            </div>
+                            <div class="platform-checkbox-item">
+                                <input type="checkbox" id="platform-bilibili" value="bilibili">
+                                <label for="platform-bilibili">B站</label>
+                            </div>
+                            <div class="platform-checkbox-item">
+                                <input type="checkbox" id="platform-kuaishou" value="kuaishou">
+                                <label for="platform-kuaishou">快手</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>状态</label>
+                        <select id="brandStatus">
+                            <option value="active">活跃</option>
+                            <option value="inactive">非活跃</option>
+                            <option value="archived">已归档</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="document.getElementById('brandForm').requestSubmit()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPage = 1;
+        let pageSize = 12;
+        let totalPages = 1;
+        let searchKeyword = '';
+        let statusFilter = '';
+        let keywords = [];
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBrands();
+            initKeywordInput();
+        });
+        
+        // 初始化关键词输入
+        function initKeywordInput() {
+            const keywordInput = document.getElementById('keywordInput');
+            keywordInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const keyword = this.value.trim();
+                    if (keyword && !keywords.includes(keyword)) {
+                        keywords.push(keyword);
+                        updateKeywordsDisplay();
+                        this.value = '';
+                    }
+                }
+            });
+        }
+        
+        // 更新关键词显示
+        function updateKeywordsDisplay() {
+            const container = document.getElementById('keywordsContainer');
+            if (!container) return;
+            
+            const input = document.getElementById('keywordInput');
+            if (!input) return;
+            
+            container.innerHTML = '';
+            
+            keywords.forEach(keyword => {
+                const tag = document.createElement('div');
+                tag.className = 'tag-item';
+                tag.innerHTML = `
+                    ${escapeHtml(keyword)}
+                    <span class="tag-remove" onclick="removeKeyword('${escapeHtml(keyword)}')">×</span>
+                `;
+                container.appendChild(tag);
+            });
+            
+            container.appendChild(input);
+            // 重新绑定事件（因为input被重新创建了）
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const keyword = this.value.trim();
+                    if (keyword && !keywords.includes(keyword)) {
+                        keywords.push(keyword);
+                        updateKeywordsDisplay();
+                        this.value = '';
+                    } else if (keyword && keywords.includes(keyword)) {
+                        showMessage('关键词已存在', 'info');
+                        this.value = '';
+                    }
+                }
+            });
+        }
+        
+        // 移除关键词
+        function removeKeyword(keyword) {
+            keywords = keywords.filter(k => k !== keyword);
+            updateKeywordsDisplay();
+        }
+        
+        // 全局函数，供HTML调用
+        window.removeKeyword = removeKeyword;
+        window.openCreateModal = openCreateModal;
+        window.openEditModal = openEditModal;
+        window.deleteBrand = deleteBrand;
+        window.closeModal = closeModal;
+        window.changePage = changePage;
+        window.handleSearch = handleSearch;
+        window.filterBrands = filterBrands;
+        window.refreshBrands = refreshBrands;
+        
+        // 加载品牌列表
+        async function loadBrands() {
+            const container = document.getElementById('brandsContainer');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                let url = `/api/v1/brands?page=${currentPage}&page_size=${pageSize}`;
+                if (statusFilter) {
+                    url += `&status=${statusFilter}`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                // 检查响应类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Expected JSON but got:', contentType, text.substring(0, 200));
+                    throw new Error('服务器返回了非JSON数据，请检查路由配置');
+                }
+                
+                const data = await response.json();
+                
+                if (data.code === 200) {
+                    totalPages = Math.ceil(data.data.total / pageSize);
+                    
+                    if (data.data.items.length > 0) {
+                        // 应用搜索过滤
+                        let filteredBrands = data.data.items;
+                        if (searchKeyword) {
+                            const keyword = searchKeyword.toLowerCase();
+                            filteredBrands = filteredBrands.filter(brand => {
+                                return brand.name.toLowerCase().includes(keyword) ||
+                                       (brand.description && brand.description.toLowerCase().includes(keyword)) ||
+                                       (brand.keywords && brand.keywords.some(k => k.toLowerCase().includes(keyword)));
+                            });
+                        }
+                        
+                        displayBrands(filteredBrands);
+                        displayPagination();
+                    } else {
+                        container.innerHTML = `
+                            <div class="empty">
+                                <div class="empty-icon">📭</div>
+                                <h3>暂无品牌</h3>
+                                <p>点击"创建品牌"按钮添加第一个品牌</p>
+                            </div>
+                        `;
+                        document.getElementById('paginationContainer').innerHTML = '';
+                    }
+                } else {
+                    throw new Error(data.message || '加载失败');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty">
+                        <div class="empty-icon">❌</div>
+                        <h3>加载失败</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // 显示品牌列表
+        function displayBrands(brands) {
+            const grid = document.createElement('div');
+            grid.className = 'brands-grid';
+            
+            brands.forEach(brand => {
+                const card = createBrandCard(brand);
+                grid.appendChild(card);
+            });
+            
+            document.getElementById('brandsContainer').innerHTML = '';
+            document.getElementById('brandsContainer').appendChild(grid);
+        }
+        
+        // 创建品牌卡片
+        function createBrandCard(brand) {
+            const card = document.createElement('div');
+            card.className = 'brand-card';
+            
+            const statusClass = `status-${brand.status}`;
+            const statusText = {
+                'active': '活跃',
+                'inactive': '非活跃',
+                'archived': '已归档'
+            }[brand.status] || brand.status;
+            
+            card.innerHTML = `
+                <div class="brand-header">
+                    <div class="brand-name">${escapeHtml(brand.name)}</div>
+                    <span class="brand-status ${statusClass}">${statusText}</span>
+                </div>
+                <div class="brand-description">${brand.description ? escapeHtml(brand.description) : '<span style="color: #ccc;">暂无描述</span>'}</div>
+                ${brand.keywords && brand.keywords.length > 0 ? `
+                    <div class="brand-keywords">
+                        ${brand.keywords.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('')}
+                    </div>
+                ` : ''}
+                ${brand.platforms && brand.platforms.length > 0 ? `
+                    <div class="brand-platforms">
+                        ${brand.platforms.map(p => `<span class="platform-tag platform-${p}">${getPlatformName(p)}</span>`).join('')}
+                    </div>
+                ` : ''}
+                <div class="brand-meta">
+                    <span>创建: ${formatDate(brand.created_at)}</span>
+                    <span>更新: ${formatDate(brand.updated_at)}</span>
+                </div>
+                <div class="brand-actions">
+                    <a href="/api/v1/data?brand_id=${brand.id}" class="btn-action btn-view" target="_blank">查看数据</a>
+                    <button class="btn-action btn-edit" onclick="openEditModal(${brand.id})">编辑</button>
+                    <button class="btn-action btn-delete" onclick="deleteBrand(${brand.id}, '${escapeHtml(brand.name)}')">删除</button>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // 显示分页
+        function displayPagination() {
+            if (totalPages <= 1) {
+                document.getElementById('paginationContainer').innerHTML = '';
+                return;
+            }
+            
+            const pagination = document.createElement('div');
+            pagination.className = 'pagination';
+            pagination.innerHTML = `
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                <span>第 ${currentPage} / ${totalPages} 页</span>
+                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+            `;
+            
+            document.getElementById('paginationContainer').innerHTML = '';
+            document.getElementById('paginationContainer').appendChild(pagination);
+        }
+        
+        // 切换页码
+        function changePage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                loadBrands();
+            }
+        }
+        
+        // 搜索处理
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                searchKeyword = event.target.value.trim();
+                currentPage = 1;
+                loadBrands();
+            }
+        }
+        
+        // 筛选处理
+        function filterBrands() {
+            statusFilter = document.getElementById('statusFilter').value;
+            currentPage = 1;
+            loadBrands();
+        }
+        
+        // 刷新品牌列表
+        function refreshBrands() {
+            currentPage = 1;
+            searchKeyword = '';
+            statusFilter = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            loadBrands();
+        }
+        
+        // 打开创建模态窗口
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = '创建品牌';
+            document.getElementById('brandId').value = '';
+            document.getElementById('brandName').value = '';
+            document.getElementById('brandDescription').value = '';
+            keywords = [];
+            updateKeywordsDisplay();
+            document.querySelectorAll('.platform-checkbox-item input').forEach(cb => cb.checked = false);
+            document.getElementById('brandStatus').value = 'active';
+            document.getElementById('brandModal').classList.add('show');
+        }
+        
+        // 打开编辑模态窗口
+        async function openEditModal(brandId) {
+            try {
+                const response = await fetch(`/api/v1/brands/${brandId}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON数据');
+                }
+                
+                const data = await response.json();
+                
+                if (data.code === 200) {
+                    const brand = data.data;
+                    document.getElementById('modalTitle').textContent = '编辑品牌';
+                    document.getElementById('brandId').value = brand.id;
+                    document.getElementById('brandName').value = brand.name;
+                    document.getElementById('brandDescription').value = brand.description || '';
+                    keywords = brand.keywords || [];
+                    updateKeywordsDisplay();
+                    
+                    document.querySelectorAll('.platform-checkbox-item input').forEach(cb => {
+                        cb.checked = (brand.platforms || []).includes(cb.value);
+                    });
+                    
+                    document.getElementById('brandStatus').value = brand.status;
+                    document.getElementById('brandModal').classList.add('show');
+                } else {
+                    alert('加载品牌信息失败: ' + (data.message || '未知错误'));
+                }
+            } catch (error) {
+                alert('加载品牌信息失败: ' + error.message);
+            }
+        }
+        
+        // 保存品牌
+        async function saveBrand(event) {
+            event.preventDefault();
+            
+            const brandId = document.getElementById('brandId').value;
+            const brandData = {
+                name: document.getElementById('brandName').value.trim(),
+                description: document.getElementById('brandDescription').value.trim(),
+                keywords: keywords,
+                platforms: Array.from(document.querySelectorAll('.platform-checkbox-item input:checked')).map(cb => cb.value),
+                status: document.getElementById('brandStatus').value
+            };
+            
+            if (!brandData.name) {
+                alert('请输入品牌名称');
+                return;
+            }
+            
+            // 如果没有选择平台，使用默认平台
+            if (!brandData.platforms || brandData.platforms.length === 0) {
+                brandData.platforms = ['xhs', 'douyin', 'weibo', 'zhihu'];
+            }
+            
+            // 如果没有关键词，使用品牌名称作为关键词
+            if (!brandData.keywords || brandData.keywords.length === 0) {
+                brandData.keywords = [brandData.name];
+            }
+            
+            try {
+                let response;
+                if (brandId) {
+                    // 更新品牌
+                    const updateData = {
+                        name: brandData.name,
+                        description: brandData.description,
+                        keywords: brandData.keywords,
+                        platforms: brandData.platforms,
+                        status: brandData.status
+                    };
+                    response = await fetch(`/api/v1/brands/${brandId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    });
+                } else {
+                    // 创建品牌
+                    response = await fetch('/api/v1/brands', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(brandData)
+                    });
+                }
+                
+                if (response.ok) {
+                    const result = await response.json().catch(() => null);
+                    closeModal();
+                    loadBrands();
+                    // 显示成功提示
+                    showMessage(brandId ? '品牌更新成功！' : '品牌创建成功！', 'success');
+                } else {
+                    const errorData = await response.json().catch(() => ({ detail: '未知错误' }));
+                    const errorMsg = errorData.detail || errorData.message || `HTTP ${response.status}`;
+                    alert('保存失败: ' + errorMsg);
+                }
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+        
+        // 删除品牌
+        async function deleteBrand(brandId, brandName) {
+            if (!brandId) {
+                alert('品牌ID无效');
+                return;
+            }
+            
+            if (!confirm(`确定要删除品牌"${brandName}"吗？\n\n此操作不可恢复！`)) {
+                return;
+            }
+            
+            try {
+                console.log('开始删除品牌:', brandId);
+                
+                const response = await fetch(`/api/v1/brands/${brandId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('删除响应状态:', response.status, response.statusText);
+                
+                // 204 No Content 表示删除成功
+                if (response.status === 204) {
+                    showMessage('品牌删除成功！', 'success');
+                    setTimeout(() => {
+                        loadBrands();
+                    }, 500);
+                } else if (response.ok) {
+                    // 其他2xx状态码也视为成功
+                    showMessage('品牌删除成功！', 'success');
+                    setTimeout(() => {
+                        loadBrands();
+                    }, 500);
+                } else {
+                    // 获取错误信息
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.detail || errorData.message || errorMsg;
+                    } catch (e) {
+                        const text = await response.text().catch(() => '');
+                        if (text) {
+                            errorMsg = text.substring(0, 200);
+                        }
+                    }
+                    console.error('删除失败:', errorMsg);
+                    alert('删除失败: ' + errorMsg);
+                }
+            } catch (error) {
+                console.error('删除品牌异常:', error);
+                alert('删除失败: ' + error.message + '\n\n请检查控制台查看详细错误信息。');
+            }
+        }
+        
+        // 关闭模态窗口
+        function closeModal(event) {
+            if (event && event.target.id !== 'brandModal' && !event.target.closest('.modal-container')) {
+                return;
+            }
+            document.getElementById('brandModal').classList.remove('show');
+        }
+        
+        // 工具函数
+        function getPlatformName(platform) {
+            const names = {
+                'xhs': '小红书',
+                'douyin': '抖音',
+                'weibo': '微博',
+                'zhihu': '知乎',
+                'bilibili': 'B站',
+                'kuaishou': '快手'
+            };
+            return names[platform] || platform;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+        
+        // 显示消息提示
+        function showMessage(message, type = 'info') {
+            // 创建消息元素
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                background: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10001;
+                animation: slideIn 0.3s;
+                max-width: 300px;
+            `;
+            messageDiv.textContent = message;
+            
+            // 添加动画样式
+            if (!document.getElementById('messageStyles')) {
+                const style = document.createElement('style');
+                style.id = 'messageStyles';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(messageDiv);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                messageDiv.style.animation = 'slideIn 0.3s reverse';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // ESC键关闭模态窗口
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('brandModal');
+                if (modal && modal.classList.contains('show')) {
+                    closeModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

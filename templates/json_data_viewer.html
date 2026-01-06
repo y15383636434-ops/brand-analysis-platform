@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON数据查看器 - {{ platform_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        /* 视图切换按钮 */
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .view-toggle button {
+            padding: 8px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .view-toggle button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .view-toggle button:hover {
+            border-color: #667eea;
+        }
+        
+        /* 表格视图样式 */
+        .table-view {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .table-view thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .table-view th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        
+        .table-view th:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .table-view th.sortable::after {
+            content: ' ↕';
+            opacity: 0.5;
+            font-size: 12px;
+        }
+        
+        .table-view th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+        
+        .table-view th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+        
+        .table-view td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+        
+        .table-view tbody tr {
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        
+        .table-view tbody tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .table-view tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .table-view .cell-title {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .table-view .cell-author {
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .table-view .cell-time {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .table-view .cell-stats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .table-view .stat-badge {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .table-view .stat-badge.likes { background: #ff6b6b; color: white; }
+        .table-view .stat-badge.comments { background: #4ecdc4; color: white; }
+        .table-view .stat-badge.shares { background: #95e1d3; color: white; }
+        .table-view .stat-badge.views { background: #ffe66d; color: #333; }
+        
+        .table-view .cell-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .table-view .btn-view {
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        
+        .table-view .btn-view:hover {
+            background: #5568d3;
+        }
+        
+        /* 卡片视图样式 */
+        .card-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .data-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .data-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .card-number {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .card-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .card-author {
+            color: #667eea;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .card-time {
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .card-stats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        
+        .card-preview {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f0f0f0;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .card-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-card-view {
+            flex: 1;
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        
+        .btn-card-view:hover {
+            background: #5568d3;
+        }
+        
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .filter-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #667eea;
+            color: white;
+            border: none;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .file-list {
+            margin-bottom: 25px;
+        }
+        
+        .file-item {
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .file-item.active {
+            border-color: #667eea;
+            background: #e7f3ff;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .file-info {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .data-viewer {
+            margin-top: 25px;
+            min-height: 200px;
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 10px;
+            border: 2px dashed #e0e0e0;
+        }
+        
+        .data-viewer:not(:empty) {
+            border: 2px solid #667eea;
+            background: white;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px;
+        }
+        
+        .pagination button {
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination span {
+            color: #666;
+            padding: 0 15px;
+        }
+        
+        .pagination input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .toolbar-left {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .toolbar-right {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .search-box {
+            position: relative;
+            min-width: 250px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        
+        .platform-dropdown {
+            position: relative;
+        }
+        
+        .platform-select-btn {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .platform-select-btn:hover {
+            border-color: #667eea;
+        }
+        
+        .platform-select-btn.active {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .platform-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-top: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .platform-dropdown-menu.show {
+            display: block;
+        }
+        
+        .platform-option {
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .platform-option:hover {
+            background: #f8f9ff;
+        }
+        
+        .platform-option input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        
+        .platform-option label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .selected-count {
+            color: #667eea;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        /* 模态窗口样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            animation: fadeIn 0.3s;
+            overflow-y: auto;
+        }
+        
+        .modal-overlay.show {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-container {
+            background: white;
+            border-radius: 12px;
+            max-width: 1000px;
+            width: 95%;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+            display: flex;
+            flex-direction: column;
+            margin: auto;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .modal-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-right: 15px;
+        }
+        
+        .modal-nav button {
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .modal-nav button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .modal-body {
+            padding: 25px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .modal-footer {
+            padding: 15px 25px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            flex-shrink: 0;
+        }
+        
+        .modal-footer-left {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .modal-footer-right {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .modal-item-summary {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f8f9ff;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-item-summary .item-number {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .content-field {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .content-field-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        
+        .content-field-value {
+            color: #333;
+            font-size: 14px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+        
+        .content-field-value img {
+            max-width: 100%;
+            border-radius: 4px;
+            margin-top: 8px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .raw-json {
+            margin-top: 15px;
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .nav-links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .btn-raw, .btn-link {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        
+        .btn-raw {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .btn-raw:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-link {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-link:hover {
+            background: #5568d3;
+        }
+        
+        .btn-export {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-export:hover {
+            background: #45a049;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .card-view {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-view {
+                font-size: 12px;
+            }
+            
+            .table-view th,
+            .table-view td {
+                padding: 8px;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .toolbar-left,
+            .toolbar-right {
+                width: 100%;
+            }
+            
+            .modal-container {
+                width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+        }
+        
+        /* 隐藏类 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 JSON数据查看器</h1>
+        <p class="subtitle">数据类型: {{ data_type }} | 快捷键: 按 <kbd>?</kbd> 查看帮助</p>
+        
+        <!-- 筛选区域 -->
+        <div class="filter-section">
+            <h3>🔍 筛选条件</h3>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>平台选择（可多选）</label>
+                    <div class="platform-dropdown">
+                        <div class="platform-select-btn" id="platformSelectBtn" onclick="togglePlatformDropdown()">
+                            <span>选择平台 <span class="selected-count" id="selectedCount">(全部)</span></span>
+                            <span>▼</span>
+                        </div>
+                        <div class="platform-dropdown-menu" id="platformDropdownMenu">
+                            <div class="platform-option">
+                                <input type="checkbox" id="platform_all" checked onchange="toggleAllPlatforms(this)">
+                                <label for="platform_all">全部平台</label>
+                            </div>
+                            {% for platform in platforms %}
+                            <div class="platform-option">
+                                <input type="checkbox" id="platform_{{ platform.code }}" class="platform-checkbox" value="{{ platform.code }}" checked onchange="updatePlatformSelection()">
+                                <label for="platform_{{ platform.code }}">{{ platform.name }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>关键词筛选（文件名）</label>
+                    <input type="text" id="keywordFilter" placeholder="输入关键词筛选文件名..." onkeyup="handleKeywordFilter(event)">
+                </div>
+                <div class="filter-group">
+                    <label>数据类型</label>
+                    <select id="dataTypeSelect">
+                        <option value="contents" {% if data_type == 'contents' %}selected{% endif %}>内容数据</option>
+                        <option value="comments" {% if data_type == 'comments' %}selected{% endif %}>评论数据</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-row">
+                <button onclick="loadFileList()">🔍 应用筛选</button>
+                <button onclick="resetFilters()">🔄 重置筛选</button>
+                <button onclick="location.href='/api/v1/mediacrawler'">返回爬虫控制台</button>
+            </div>
+        </div>
+        
+        <div id="fileList" class="file-list">
+            <div class="loading">正在加载文件列表...</div>
+        </div>
+        
+        <!-- 工具栏 -->
+        <div id="toolbar" class="toolbar hidden">
+            <div class="toolbar-left">
+                <div class="view-toggle">
+                    <button id="viewTable" class="active" onclick="switchView('table')">📋 表格视图</button>
+                    <button id="viewCard" onclick="switchView('card')">🃏 卡片视图</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="quickSearch" placeholder="快速搜索内容..." onkeyup="handleQuickSearch(event)">
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <button onclick="exportCurrentData()">📥 导出数据</button>
+                <button onclick="refreshData()">🔄 刷新</button>
+            </div>
+        </div>
+        
+        <div id="dataViewer" class="data-viewer">
+            <div class="empty">
+                <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                <h3 style="margin-bottom: 10px;">请选择一个文件查看数据</h3>
+                <p style="color: #999; font-size: 14px;">点击上方文件列表中的任意文件即可查看数据</p>
+            </div>
+        </div>
+        
+        <!-- 模态窗口 -->
+        <div id="dataModal" class="modal-overlay" onclick="handleModalOverlayClick(event)">
+            <div class="modal-container" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 id="modalTitle">数据详情</h3>
+                    <div class="modal-nav">
+                        <button onclick="navigateModal(-1)" title="上一个 (←)">← 上一个</button>
+                        <button onclick="navigateModal(1)" title="下一个 (→)">下一个 →</button>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()" title="关闭 (ESC)">×</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- 内容将动态加载 -->
+                </div>
+                <div class="modal-footer">
+                    <div class="modal-footer-left">
+                        <button class="btn-raw" onclick="toggleRawData()">切换原始JSON</button>
+                        <button class="btn-export" onclick="exportCurrentItem()">导出此项</button>
+                    </div>
+                    <div class="modal-footer-right">
+                        <a id="modalLink" href="#" target="_blank" class="btn-link" style="display: none;">打开链接</a>
+                        <button class="btn-raw" onclick="closeModal()">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/api/v1/mediacrawler">返回爬虫控制台</a>
+            <a href="/docs">API文档</a>
+        </div>
+    </div>
+    
+    <script>
+        const platforms = {{ platforms | tojson }};
+        let currentDataType = '{{ data_type }}';
+        let currentFilename = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let selectedPlatforms = [];
+        let keywordFilter = '';
+        let contentKeywordFilter = '';
+        let currentView = 'table'; // 'table' 或 'card'
+        let currentModalIndex = -1;
+        let sortColumn = null;
+        let sortDirection = 'asc';
+        
+        // 初始化：选中所有平台
+        document.addEventListener('DOMContentLoaded', function() {
+            selectedPlatforms = platforms.map(p => p.code);
+            updatePlatformSelection();
+            
+            // 键盘快捷键
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+        });
+        
+        // 键盘快捷键处理
+        function handleKeyboardShortcuts(event) {
+            // ESC关闭模态窗口
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('dataModal');
+                if (modal && (modal.classList.contains('show') || modal.style.display === 'flex')) {
+                    closeModal();
+                }
+            }
+            
+            // 左右箭头导航
+            if (event.key === 'ArrowLeft' && currentModalIndex >= 0) {
+                navigateModal(-1);
+            }
+            if (event.key === 'ArrowRight' && currentModalIndex >= 0) {
+                navigateModal(1);
+            }
+            
+            // Ctrl+F 聚焦搜索框
+            if (event.ctrlKey && event.key === 'f') {
+                event.preventDefault();
+                const searchBox = document.getElementById('quickSearch');
+                if (searchBox) {
+                    searchBox.focus();
+                }
+            }
+            
+            // ? 显示帮助
+            if (event.key === '?' && !event.shiftKey) {
+                showHelp();
+            }
+        }
+        
+        function showHelp() {
+            alert(`快捷键帮助：
+            
+ESC - 关闭模态窗口
+← → - 在模态窗口中导航
+Ctrl+F - 聚焦搜索框
+? - 显示此帮助
+
+表格视图：
+- 点击列标题排序
+- 点击行查看详情
+
+卡片视图：
+- 点击卡片查看详情`);
+        }
+        
+        // 切换视图
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('viewTable').classList.toggle('active', view === 'table');
+            document.getElementById('viewCard').classList.toggle('active', view === 'card');
+            
+            if (currentFilename && currentFilePlatform) {
+                loadFileContent(currentPage, false);
+            }
+        }
+        
+        // 快速搜索
+        function handleQuickSearch(event) {
+            if (event.key === 'Enter') {
+                contentKeywordFilter = event.target.value.trim();
+                currentPage = 1;
+                loadFileContent(1);
+            }
+        }
+        
+        // 刷新数据
+        function refreshData() {
+            if (currentFilename && currentFilePlatform) {
+                loadFileContent(currentPage, false);
+            } else {
+                loadFileList();
+            }
+        }
+        
+        // 导出当前数据
+        function exportCurrentData() {
+            if (!window.currentPageItems || window.currentPageItems.length === 0) {
+                alert('没有可导出的数据');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(window.currentPageItems, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${currentFilename || 'data'}_page_${currentPage}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // 导出当前项
+        function exportCurrentItem() {
+            if (!currentModalRawData) {
+                alert('没有可导出的数据');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(currentModalRawData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `item_${currentModalIndex + 1}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // 模态窗口导航
+        function navigateModal(direction) {
+            const items = window.currentPageItems || [];
+            if (items.length === 0) return;
+            
+            let newIndex = currentModalIndex + direction;
+            if (newIndex < 0) {
+                if (currentPage > 1) {
+                    // 加载上一页
+                    loadFileContent(currentPage - 1, true);
+                    return;
+                } else {
+                    newIndex = 0;
+                }
+            }
+            if (newIndex >= items.length) {
+                if (currentPage < totalPages) {
+                    // 加载下一页
+                    loadFileContent(currentPage + 1, true);
+                    return;
+                } else {
+                    newIndex = items.length - 1;
+                }
+            }
+            
+            currentModalIndex = newIndex;
+            openModal(newIndex);
+        }
+        
+        // 表格排序
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            
+            // 更新表头样式
+            document.querySelectorAll('.table-view th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+            const header = document.querySelector(`.table-view th[data-column="${column}"]`);
+            if (header) {
+                header.classList.add(`sort-${sortDirection}`);
+            }
+            
+            // 排序数据
+            if (window.currentPageItems) {
+                window.currentPageItems.sort((a, b) => {
+                    let aVal = getNestedValue(a, column);
+                    let bVal = getNestedValue(b, column);
+                    
+                    if (typeof aVal === 'string') {
+                        aVal = aVal.toLowerCase();
+                        bVal = bVal.toLowerCase();
+                    }
+                    
+                    if (sortDirection === 'asc') {
+                        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                    } else {
+                        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+                    }
+                });
+                
+                // 重新渲染
+                renderDataView();
+            }
+        }
+        
+        function getNestedValue(obj, path) {
+            const keys = path.split('.');
+            let value = obj;
+            for (const key of keys) {
+                value = value?.[key];
+            }
+            return value || '';
+        }
+        
+        // 切换平台下拉菜单
+        function togglePlatformDropdown() {
+            const menu = document.getElementById('platformDropdownMenu');
+            menu.classList.toggle('show');
+        }
+        
+        // 点击外部关闭下拉菜单
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.platform-dropdown');
+            if (!dropdown.contains(event.target)) {
+                document.getElementById('platformDropdownMenu').classList.remove('show');
+            }
+        });
+        
+        // 全选/取消全选平台
+        function toggleAllPlatforms(checkbox) {
+            const platformCheckboxes = document.querySelectorAll('.platform-checkbox');
+            platformCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updatePlatformSelection();
+        }
+        
+        // 更新平台选择
+        function updatePlatformSelection() {
+            const checkboxes = document.querySelectorAll('.platform-checkbox:checked');
+            selectedPlatforms = Array.from(checkboxes).map(cb => cb.value);
+            
+            const allCheckbox = document.getElementById('platform_all');
+            const totalCheckboxes = document.querySelectorAll('.platform-checkbox').length;
+            allCheckbox.checked = selectedPlatforms.length === totalCheckboxes;
+            
+            const countSpan = document.getElementById('selectedCount');
+            if (selectedPlatforms.length === totalCheckboxes) {
+                countSpan.textContent = '(全部)';
+            } else {
+                countSpan.textContent = `(${selectedPlatforms.length}个)`;
+            }
+            
+            const btn = document.getElementById('platformSelectBtn');
+            if (selectedPlatforms.length > 0) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+        
+        // 关键词筛选（文件名）
+        function handleKeywordFilter(event) {
+            if (event.key === 'Enter') {
+                keywordFilter = event.target.value.trim();
+                loadFileList();
+            }
+        }
+        
+        // 重置筛选
+        function resetFilters() {
+            document.querySelectorAll('.platform-checkbox').forEach(cb => cb.checked = true);
+            document.getElementById('platform_all').checked = true;
+            selectedPlatforms = platforms.map(p => p.code);
+            updatePlatformSelection();
+            
+            document.getElementById('keywordFilter').value = '';
+            keywordFilter = '';
+            
+            contentKeywordFilter = '';
+            document.getElementById('quickSearch').value = '';
+            
+            loadFileList();
+        }
+        
+        // 监听数据类型变化
+        document.getElementById('dataTypeSelect').addEventListener('change', function() {
+            currentDataType = this.value;
+            currentFilename = null;
+            currentPage = 1;
+            loadFileList();
+            document.getElementById('dataViewer').innerHTML = '<div class="empty">请选择一个文件查看数据</div>';
+            document.getElementById('toolbar').classList.add('hidden');
+        });
+        
+        // 加载文件列表
+        async function loadFileList() {
+            const fileListDiv = document.getElementById('fileList');
+            fileListDiv.innerHTML = '<div class="loading">正在加载文件列表...</div>';
+            
+            try {
+                const platformsParam = selectedPlatforms.join(',');
+                let url = `/api/v1/mediacrawler/data/list?platforms=${platformsParam}&data_type=${currentDataType}`;
+                if (keywordFilter) {
+                    url += `&keyword=${encodeURIComponent(keywordFilter)}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.files && data.files.length > 0) {
+                        let html = `<h3 style="margin-bottom: 15px;">找到 ${data.files.length} 个文件:</h3>`;
+                        html += `<p style="color: #666; font-size: 12px; margin-bottom: 10px;">已选择平台: ${selectedPlatforms.join(', ')} | 数据类型: ${currentDataType}</p>`;
+                        data.files.forEach(file => {
+                            const date = new Date(file.modified_time * 1000).toLocaleString('zh-CN');
+                            const sizeKB = (file.size / 1024).toFixed(2);
+                            const platformName = file.platform_name || file.platform || '未知';
+                            const fileDate = new Date(file.modified_time * 1000);
+                            const today = new Date();
+                            const isToday = fileDate.toDateString() === today.toDateString();
+                            const todayBadge = isToday ? '<span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 5px;">今天</span>' : '';
+                            
+                            const escapedFilename = escapeHtmlAttribute(file.filename);
+                            const escapedPlatform = escapeHtmlAttribute(file.platform);
+                            const displayFilename = escapeHtml(file.filename);
+                            
+                            html += `
+                                <div class="file-item" data-filename="${escapedFilename}" data-platform="${escapedPlatform}" style="cursor: pointer;">
+                                    <div class="file-name">📄 ${displayFilename}${todayBadge}</div>
+                                    <div class="file-info">
+                                        <span style="display: inline-block; padding: 2px 8px; background: #667eea; color: white; border-radius: 3px; font-size: 11px; margin-right: 10px;">${platformName}</span>
+                                        大小: ${sizeKB} KB | 修改时间: ${date}
+                                        <span style="float: right; color: #667eea; font-size: 12px; margin-left: 10px;">👁️ 点击查看</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        fileListDiv.innerHTML = html;
+                        
+                        // 每次重新设置innerHTML后都需要重新绑定事件监听器
+                        // 使用事件委托，在父元素上监听，这样即使子元素变化也能正常工作
+                        fileListDiv.removeEventListener('click', handleFileItemClick);
+                        fileListDiv.addEventListener('click', handleFileItemClick);
+                    } else {
+                        let html = '<div class="empty">';
+                        html += '<h3>暂无数据文件</h3>';
+                        html += '<p style="margin-top: 10px;">可能的原因：</p>';
+                        html += '<ul style="text-align: left; display: inline-block; margin-top: 10px;">';
+                        html += '<li>所选平台没有数据文件</li>';
+                        html += '<li>数据类型不匹配（尝试切换"内容数据"和"评论数据"）</li>';
+                        html += '<li>文件命名格式不正确（应为 search_contents_*.json 或 search_comments_*.json）</li>';
+                        html += '</ul>';
+                        html += `<p style="margin-top: 15px;">已选择平台: ${selectedPlatforms.join(', ') || '全部'}</p>`;
+                        html += `<p>数据类型: ${currentDataType}</p>`;
+                        html += '</div>';
+                        fileListDiv.innerHTML = html;
+                    }
+                } else {
+                    fileListDiv.innerHTML = `<div class="empty">加载失败: ${data.error || '未知错误'}</div>`;
+                }
+            } catch (error) {
+                console.error('加载文件列表失败:', error);
+                fileListDiv.innerHTML = `<div class="empty">
+                    <h3>加载失败</h3>
+                    <p>错误信息: ${error.message}</p>
+                </div>`;
+            }
+        }
+        
+        let currentFilePlatform = '';
+        
+        function escapeHtml(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+        
+        function escapeHtmlAttribute(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+        
+        function handleFileItemClick(event) {
+            // 查找被点击的文件项
+            const fileItem = event.target.closest('.file-item');
+            if (!fileItem) {
+                return; // 点击的不是文件项
+            }
+            
+            // 阻止事件冒泡和默认行为
+            event.stopPropagation();
+            event.preventDefault();
+            
+            const filename = fileItem.getAttribute('data-filename');
+            const platform = fileItem.getAttribute('data-platform');
+            
+            console.log('文件项被点击:', { filename, platform, element: fileItem });
+            
+            if (!filename || !platform) {
+                console.error('文件信息不完整:', { filename, platform });
+                alert('文件信息不完整，无法打开。请刷新页面重试。');
+                return;
+            }
+            
+            // 调用selectFile函数
+            selectFile(filename, platform, fileItem);
+        }
+        
+        function selectFile(filename, filePlatform, eventElement) {
+            currentFilename = filename;
+            currentFilePlatform = filePlatform;
+            currentPage = 1;
+            
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (eventElement) {
+                eventElement.classList.add('active');
+            }
+            
+            // 显示工具栏
+            const toolbar = document.getElementById('toolbar');
+            if (toolbar) {
+                toolbar.classList.remove('hidden');
+            }
+            
+            // 滚动到数据查看区域
+            setTimeout(() => {
+                const dataViewer = document.getElementById('dataViewer');
+                if (dataViewer) {
+                    dataViewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+            
+            loadFileContent(1, false);
+        }
+        
+        async function loadFileContent(page = 1, autoOpenFirst = false) {
+            console.log('loadFileContent 调用:', { currentFilename, currentFilePlatform, page, autoOpenFirst });
+            
+            if (!currentFilename || !currentFilePlatform) {
+                console.error('缺少必要参数:', { currentFilename, currentFilePlatform });
+                alert('文件信息不完整，请重试');
+                return;
+            }
+            
+            const dataViewer = document.getElementById('dataViewer');
+            if (dataViewer) {
+                dataViewer.innerHTML = '<div class="loading">正在加载数据...</div>';
+            }
+            
+            try {
+                let url = `/api/v1/mediacrawler/data/file?platform=${encodeURIComponent(currentFilePlatform)}&filename=${encodeURIComponent(currentFilename)}&page=${page}&page_size=20`;
+                if (contentKeywordFilter) {
+                    url += `&keyword=${encodeURIComponent(contentKeywordFilter)}`;
+                }
+                
+                console.log('请求URL:', url);
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                if (data.success) {
+                    currentPage = data.data.page;
+                    totalPages = data.data.total_pages;
+                    
+                    window.currentPageItems = data.data.items || [];
+                    console.log('保存的数据项数量:', window.currentPageItems.length);
+                    
+                    if (autoOpenFirst && data.data.items && data.data.items.length > 0) {
+                        setTimeout(() => {
+                            currentModalIndex = 0;
+                            openModal(0);
+                        }, 500);
+                    }
+                    
+                    renderDataView();
+                } else {
+                    console.error('加载失败:', data.error);
+                    if (dataViewer) {
+                        dataViewer.innerHTML = `<div class="empty">
+                            <h3>加载失败</h3>
+                            <p>错误信息: ${data.error || '未知错误'}</p>
+                            <p style="margin-top: 10px;">请检查：</p>
+                            <ul style="text-align: left; display: inline-block; margin-top: 10px;">
+                                <li>文件是否存在</li>
+                                <li>文件格式是否正确</li>
+                                <li>网络连接是否正常</li>
+                            </ul>
+                        </div>`;
+                    }
+                }
+            } catch (error) {
+                console.error('加载文件内容异常:', error);
+                if (dataViewer) {
+                    dataViewer.innerHTML = `<div class="empty">
+                        <h3>加载失败</h3>
+                        <p>错误信息: ${error.message}</p>
+                        <p style="margin-top: 10px;">请检查：</p>
+                        <ul style="text-align: left; display: inline-block; margin-top: 10px;">
+                            <li>FastAPI服务是否正在运行</li>
+                            <li>文件路径是否正确</li>
+                            <li>网络连接是否正常</li>
+                        </ul>
+                    </div>`;
+                }
+            }
+        }
+        
+        function renderDataView() {
+            const items = window.currentPageItems || [];
+            const dataViewer = document.getElementById('dataViewer');
+            
+            if (!dataViewer) {
+                console.error('找不到数据查看区域');
+                return;
+            }
+            
+            // 添加文件信息提示
+            let html = `
+                <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 18px;">📄</span>
+                        <div>
+                            <div style="font-weight: 600; color: #333; margin-bottom: 5px;">当前文件: ${escapeHtml(currentFilename)}</div>
+                            <div style="font-size: 12px; color: #666;">平台: ${currentFilePlatform} | 数据类型: ${currentDataType}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            html += `
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value">${items.length}</div>
+                        <div class="stat-label">当前页记录数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${currentPage}</div>
+                        <div class="stat-label">当前页码</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${totalPages}</div>
+                        <div class="stat-label">总页数</div>
+                    </div>
+                </div>
+            `;
+            
+            if (currentView === 'table') {
+                html += renderTableView(items);
+            } else {
+                html += renderCardView(items);
+            }
+            
+            // 分页控件
+            if (totalPages > 1) {
+                html += `
+                    <div class="pagination">
+                        <button onclick="loadFileContent(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                        <span>第 <input type="number" min="1" max="${totalPages}" value="${currentPage}" onchange="jumpToPage(this.value)"> / ${totalPages} 页</span>
+                        <button onclick="loadFileContent(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+                    </div>
+                `;
+            }
+            
+            dataViewer.innerHTML = html;
+            
+            // 确保数据查看区域可见
+            setTimeout(() => {
+                dataViewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+        
+        function renderTableView(items) {
+            if (items.length === 0) {
+                return '<div class="empty">暂无数据</div>';
+            }
+            
+            let html = '<table class="table-view"><thead><tr>';
+            html += '<th class="sortable" data-column="title" onclick="sortTable(\'title\')">标题</th>';
+            html += '<th class="sortable" data-column="author" onclick="sortTable(\'author\')">作者</th>';
+            html += '<th class="sortable" data-column="time" onclick="sortTable(\'time\')">时间</th>';
+            html += '<th>统计</th>';
+            html += '<th>操作</th>';
+            html += '</tr></thead><tbody>';
+            
+            items.forEach((item, index) => {
+                const formatted = formatDataItem(item, currentFilePlatform);
+                html += `<tr onclick="openModal(${index})">`;
+                html += `<td class="cell-title" title="${escapeHtml(formatted.title)}">${escapeHtml(formatted.title.substring(0, 50))}${formatted.title.length > 50 ? '...' : ''}</td>`;
+                html += `<td class="cell-author">${formatted.author ? '@' + escapeHtml(formatted.author) : '-'}</td>`;
+                html += `<td class="cell-time">${formatted.time || '-'}</td>`;
+                html += `<td class="cell-stats">${getStatsBadges(item, currentFilePlatform)}</td>`;
+                html += `<td class="cell-actions"><button class="btn-view" onclick="event.stopPropagation(); openModal(${index})">查看</button></td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            return html;
+        }
+        
+        function renderCardView(items) {
+            if (items.length === 0) {
+                return '<div class="empty">暂无数据</div>';
+            }
+            
+            let html = '<div class="card-view">';
+            
+            items.forEach((item, index) => {
+                const formatted = formatDataItem(item, currentFilePlatform);
+                const globalIndex = (currentPage - 1) * 20 + index + 1;
+                
+                html += `
+                    <div class="data-card" onclick="openModal(${index})">
+                        <div class="card-header">
+                            <span class="card-number">#${globalIndex}</span>
+                        </div>
+                        <div class="card-title">${escapeHtml(formatted.title || '无标题')}</div>
+                        ${formatted.author ? `<div class="card-author">@${escapeHtml(formatted.author)}</div>` : ''}
+                        ${formatted.time ? `<div class="card-time">${escapeHtml(formatted.time)}</div>` : ''}
+                        <div class="card-stats">${getStatsBadges(item, currentFilePlatform)}</div>
+                        <div class="card-preview">${escapeHtml((formatted.title || '').substring(0, 100))}${(formatted.title || '').length > 100 ? '...' : ''}</div>
+                        <div class="card-actions">
+                            <button class="btn-card-view" onclick="event.stopPropagation(); openModal(${index})">查看详情</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function getStatsBadges(item, platform) {
+            let badges = '';
+            if (platform === 'xhs' || platform === 'xhs') {
+                if (item.liked_count !== undefined) badges += `<span class="stat-badge likes">❤️ ${item.liked_count}</span>`;
+                if (item.comment_count !== undefined) badges += `<span class="stat-badge comments">💬 ${item.comment_count}</span>`;
+                if (item.collected_count !== undefined) badges += `<span class="stat-badge shares">⭐ ${item.collected_count}</span>`;
+            } else if (platform === 'weibo' || platform === 'wb') {
+                if (item.reposts_count !== undefined) badges += `<span class="stat-badge shares">🔄 ${item.reposts_count}</span>`;
+                if (item.comments_count !== undefined) badges += `<span class="stat-badge comments">💬 ${item.comments_count}</span>`;
+                if (item.attitudes_count !== undefined) badges += `<span class="stat-badge likes">👍 ${item.attitudes_count}</span>`;
+            } else if (platform === 'douyin' || platform === 'dy') {
+                if (item.digg_count !== undefined) badges += `<span class="stat-badge likes">👍 ${item.digg_count}</span>`;
+                if (item.comment_count !== undefined) badges += `<span class="stat-badge comments">💬 ${item.comment_count}</span>`;
+                if (item.share_count !== undefined) badges += `<span class="stat-badge shares">📤 ${item.share_count}</span>`;
+            }
+            return badges || '<span style="color: #999; font-size: 12px;">-</span>';
+        }
+        
+        function jumpToPage(page) {
+            const pageNum = parseInt(page);
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                loadFileContent(pageNum);
+            }
+        }
+        
+        function applyContentKeywordFilter() {
+            const input = document.getElementById('quickSearch');
+            contentKeywordFilter = input.value.trim();
+            currentPage = 1;
+            loadFileContent(1);
+        }
+        
+        function formatDataItem(item, platform) {
+            const result = {
+                title: '',
+                author: '',
+                time: '',
+                url: '',
+                html: ''
+            };
+            
+            if (platform === 'xhs' || platform === 'xhs') {
+                result.title = item.title || item.note_title || item.desc || '';
+                result.author = item.user_nickname || item.author || item.user_name || '';
+                result.time = item.time || item.create_time || item.publish_time || '';
+                result.url = item.url || item.note_url || '';
+                
+                let html = '';
+                if (item.desc) {
+                    html += `<div class="content-field"><div class="content-field-label">📝 内容描述</div><div class="content-field-value">${escapeHtml(item.desc)}</div></div>`;
+                }
+                if (item.type) {
+                    html += `<div class="content-field"><div class="content-field-label">📌 类型</div><div class="content-field-value">${escapeHtml(item.type)}</div></div>`;
+                }
+                if (item.images && item.images.length > 0) {
+                    html += `<div class="content-field"><div class="content-field-label">🖼️ 图片 (${item.images.length}张)</div><div class="content-field-value">`;
+                    item.images.forEach(img => {
+                        const imgUrl = typeof img === 'string' ? img : (img.url || '');
+                        if (imgUrl) {
+                            html += `<img src="${imgUrl}" alt="图片" loading="lazy">`;
+                        }
+                    });
+                    html += `</div></div>`;
+                }
+                if (item.liked_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">❤️ 点赞数</div><div class="content-field-value">${item.liked_count}</div></div>`;
+                }
+                if (item.comment_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">💬 评论数</div><div class="content-field-value">${item.comment_count}</div></div>`;
+                }
+                if (item.collected_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">⭐ 收藏数</div><div class="content-field-value">${item.collected_count}</div></div>`;
+                }
+                result.html = html || '<div class="content-field"><div class="content-field-value">暂无详细信息</div></div>';
+            } else if (platform === 'weibo' || platform === 'wb') {
+                result.title = item.text || item.content || item.title || '';
+                result.author = item.user_name || item.author || item.screen_name || '';
+                result.time = item.created_at || item.time || item.publish_time || '';
+                result.url = item.url || item.weibo_url || '';
+                
+                let html = '';
+                if (item.text || item.content) {
+                    html += `<div class="content-field"><div class="content-field-label">📝 微博内容</div><div class="content-field-value">${escapeHtml(item.text || item.content)}</div></div>`;
+                }
+                if (item.pics && item.pics.length > 0) {
+                    html += `<div class="content-field"><div class="content-field-label">🖼️ 图片 (${item.pics.length}张)</div><div class="content-field-value">`;
+                    item.pics.forEach(pic => {
+                        const picUrl = typeof pic === 'string' ? pic : (pic.url || pic.large?.url);
+                        if (picUrl) {
+                            html += `<img src="${picUrl}" alt="图片" loading="lazy">`;
+                        }
+                    });
+                    html += `</div></div>`;
+                }
+                if (item.reposts_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">🔄 转发数</div><div class="content-field-value">${item.reposts_count}</div></div>`;
+                }
+                if (item.comments_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">💬 评论数</div><div class="content-field-value">${item.comments_count}</div></div>`;
+                }
+                if (item.attitudes_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">👍 点赞数</div><div class="content-field-value">${item.attitudes_count}</div></div>`;
+                }
+                result.html = html || '<div class="content-field"><div class="content-field-value">暂无详细信息</div></div>';
+            } else if (platform === 'douyin' || platform === 'dy') {
+                result.title = item.desc || item.title || item.description || '';
+                result.author = item.author || item.nickname || item.user_name || '';
+                result.time = item.create_time || item.time || '';
+                result.url = item.share_url || item.url || '';
+                
+                let html = '';
+                if (item.desc || item.description) {
+                    html += `<div class="content-field"><div class="content-field-label">📝 视频描述</div><div class="content-field-value">${escapeHtml(item.desc || item.description)}</div></div>`;
+                }
+                if (item.video_url) {
+                    html += `<div class="content-field"><div class="content-field-label">🎬 视频</div><div class="content-field-value"><video controls style="max-width: 100%;"><source src="${item.video_url}" type="video/mp4"></video></div></div>`;
+                }
+                if (item.cover) {
+                    html += `<div class="content-field"><div class="content-field-label">🖼️ 封面</div><div class="content-field-value"><img src="${item.cover}" alt="封面" style="max-width: 200px;" loading="lazy"></div></div>`;
+                }
+                if (item.digg_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">👍 点赞数</div><div class="content-field-value">${item.digg_count}</div></div>`;
+                }
+                if (item.comment_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">💬 评论数</div><div class="content-field-value">${item.comment_count}</div></div>`;
+                }
+                if (item.share_count !== undefined) {
+                    html += `<div class="content-field"><div class="content-field-label">📤 分享数</div><div class="content-field-value">${item.share_count}</div></div>`;
+                }
+                result.html = html || '<div class="content-field"><div class="content-field-value">暂无详细信息</div></div>';
+            } else {
+                result.title = item.title || item.name || item.text || item.content || '';
+                result.author = item.author || item.user_name || item.nickname || '';
+                result.time = item.time || item.create_time || item.publish_time || '';
+                result.url = item.url || '';
+                
+                let html = '';
+                const keys = Object.keys(item);
+                keys.forEach(key => {
+                    if (key !== '_id' && key !== 'url' && item[key] !== null && item[key] !== undefined) {
+                        const value = typeof item[key] === 'object' ? JSON.stringify(item[key], null, 2) : String(item[key]);
+                        if (value.length < 500) {
+                            html += `<div class="content-field"><div class="content-field-label">${key}</div><div class="content-field-value">${escapeHtml(value)}</div></div>`;
+                        }
+                    }
+                });
+                result.html = html || '<div class="content-field"><div class="content-field-value">暂无详细信息</div></div>';
+            }
+            
+            if (result.time) {
+                try {
+                    const date = new Date(result.time);
+                    if (!isNaN(date.getTime())) {
+                        result.time = date.toLocaleString('zh-CN');
+                    }
+                } catch (e) {
+                    // 保持原样
+                }
+            }
+            
+            return result;
+        }
+        
+        let currentModalData = null;
+        let currentModalRawData = null;
+        let isRawMode = false;
+        
+        function openModal(index) {
+            try {
+                const currentItems = window.currentPageItems || [];
+                
+                if (!currentItems || currentItems.length === 0) {
+                    alert('数据未加载，请稍候再试');
+                    return;
+                }
+                
+                if (index < 0 || index >= currentItems.length) {
+                    alert('数据索引无效: ' + index);
+                    return;
+                }
+                
+                const item = currentItems[index];
+                if (!item) {
+                    alert('无法获取数据项');
+                    return;
+                }
+                
+                currentModalIndex = index;
+                currentModalRawData = item;
+                
+                const formattedItem = formatDataItem(item, currentFilePlatform);
+                
+                const modalTitle = document.getElementById('modalTitle');
+                if (modalTitle) {
+                    const globalIndex = (currentPage - 1) * 20 + index + 1;
+                    modalTitle.textContent = `${formattedItem.title || `数据项 #${globalIndex}`} (${globalIndex}/${window.currentPageItems.length})`;
+                }
+                
+                const modalBody = document.getElementById('modalBody');
+                if (!modalBody) {
+                    alert('找不到模态窗口内容区域');
+                    return;
+                }
+                
+                let contentHtml = `
+                    <div class="modal-item-summary">
+                        <span class="item-number">#${(currentPage - 1) * 20 + index + 1}</span>
+                        ${formattedItem.author ? `<span class="item-author">@${escapeHtml(formattedItem.author)}</span>` : ''}
+                        ${formattedItem.time ? `<span class="item-time">${escapeHtml(formattedItem.time)}</span>` : ''}
+                    </div>
+                    <div id="modalFormattedContent">
+                        ${formattedItem.html || '<div class="content-field"><div class="content-field-value">暂无详细信息</div></div>'}
+                    </div>
+                    <pre class="raw-json" id="modalRawContent" style="display: none;">${JSON.stringify(item, null, 2)}</pre>
+                `;
+                modalBody.innerHTML = contentHtml;
+                
+                const modalLink = document.getElementById('modalLink');
+                if (modalLink) {
+                    if (formattedItem.url) {
+                        modalLink.href = formattedItem.url;
+                        modalLink.style.display = 'inline-block';
+                    } else {
+                        modalLink.style.display = 'none';
+                    }
+                }
+                
+                const modal = document.getElementById('dataModal');
+                if (!modal) {
+                    alert('找不到模态窗口元素');
+                    return;
+                }
+                
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
+                isRawMode = false;
+                
+                currentModalData = { item, formattedItem, index };
+                document.body.style.overflow = 'hidden';
+            } catch (error) {
+                console.error('打开模态窗口失败:', error);
+                alert('打开数据详情失败: ' + error.message);
+            }
+        }
+        
+        function handleModalOverlayClick(event) {
+            if (event.target.id === 'dataModal') {
+                closeModal();
+            }
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('dataModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+            document.body.style.overflow = '';
+            currentModalData = null;
+            currentModalRawData = null;
+            currentModalIndex = -1;
+            isRawMode = false;
+        }
+        
+        function toggleRawData() {
+            const formattedDiv = document.getElementById('modalFormattedContent');
+            const rawDiv = document.getElementById('modalRawContent');
+            
+            if (isRawMode) {
+                formattedDiv.style.display = 'block';
+                rawDiv.style.display = 'none';
+                isRawMode = false;
+            } else {
+                formattedDiv.style.display = 'none';
+                rawDiv.style.display = 'block';
+                isRawMode = true;
+            }
+        }
+        
+        // 初始化加载文件列表
+        loadFileList();
+    </script>
+</body>
+</html>

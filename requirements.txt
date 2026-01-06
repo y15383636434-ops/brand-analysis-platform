@@ -1,0 +1,62 @@
+# Web框架
+fastapi
+uvicorn[standard]
+python-multipart
+
+# 数据库
+sqlalchemy
+pymysql
+pymongo
+redis
+alembic
+
+# 异步任务
+celery
+flower
+
+# 数据处理
+pandas
+numpy
+
+# HTTP请求
+httpx
+requests
+
+# AI和NLP
+# 注意：openai 和 anthropic 这种纯 API 库对 Python 版本不敏感
+openai
+anthropic
+google-generativeai
+# transformers 和 torch 在 3.13 上可能需要最新版，不锁版本让它自动找
+transformers
+torch
+jieba
+snownlp
+
+# 报告生成
+jinja2
+weasyprint
+python-docx
+openpyxl
+
+# 数据可视化
+matplotlib
+seaborn
+wordcloud
+
+# 工具库
+python-dotenv
+pydantic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+psutil
+
+# 日志
+loguru
+
+# 开发工具
+pytest
+pytest-asyncio
+black
+flake8

@@ -1,0 +1,70 @@
+# 数据库配置
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=brand_analysis
+
+# MongoDB配置
+MONGODB_HOST=localhost
+MONGODB_PORT=27017
+MONGODB_DATABASE=brand_analysis
+
+# Redis配置
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
+
+# Celery配置
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+# AI配置（选择一种）
+# Google Gemini (推荐)
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.0-flash-exp
+
+# OpenAI
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=your_anthropic_api_key
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# 本地LLM（可选）
+# LOCAL_LLM_URL=http://localhost:8000/v1
+# LOCAL_LLM_MODEL=chatglm3-6b
+
+# 安全配置
+SECRET_KEY=your-secret-key-change-in-production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# 日志配置
+LOG_LEVEL=INFO
+LOG_FILE=logs/app.log
+
+# MediaCrawler配置
+# MediaCrawler路径（相对路径或绝对路径）
+# 相对路径示例: ./MediaCrawler
+# 绝对路径示例: C:\path\to\MediaCrawler
+MEDIACRAWLER_PATH=./MediaCrawler
+
+# MediaCrawler的Python解释器路径（可选，如果MediaCrawler有独立Python环境）
+# 如果MediaCrawler有python_env目录，会自动检测
+MEDIACRAWLER_PYTHON=
+
+# 是否使用真实爬虫（True=使用MediaCrawler真实爬虫，False=使用模拟数据）
+USE_REAL_CRAWLER=True
+
+# 强制使用真实爬虫（即使失败也不降级到模拟数据）
+FORCE_REAL_CRAWL=False
+
+# 爬虫配置
+CRAWL_MAX_ITEMS=100
+CRAWL_INCLUDE_COMMENTS=True
+CRAWL_TIMEOUT=300
+

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爬取监控 - {{ platform_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .info-card p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .qrcode-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .qrcode-container h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .qrcode-container img {
+            max-width: 300px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .qrcode-container p {
+            color: #666;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .output-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .output-line {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        
+        .output-line.info {
+            color: #4ec9b0;
+        }
+        
+        .output-line.warning {
+            color: #dcdcaa;
+        }
+        
+        .output-line.error {
+            color: #f48771;
+        }
+        
+        .output-line.success {
+            color: #4ec9b0;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-running {
+            background: #4ec9b0;
+            color: white;
+        }
+        
+        .status-completed {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-failed {
+            background: #f44336;
+            color: white;
+        }
+        
+        .status-pending {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .status-stopped {
+            background: #9e9e9e;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+        
+        .btn-danger:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕷️ 爬取监控</h1>
+        <div class="subtitle">
+            平台: <strong>{{ platform_name }}</strong> | 
+            关键词: <strong id="keywords">{{ keywords }}</strong> |
+            状态: <span class="status-badge status-pending" id="status-badge">等待中</span>
+        </div>
+        
+        <div class="info-card">
+            <h3>📋 任务信息</h3>
+            <p><strong>平台:</strong> {{ platform_name }}</p>
+            <p><strong>关键词:</strong> <span id="info-keywords">{{ keywords }}</span></p>
+            <p><strong>最大数量:</strong> <span id="info-max-items">{{ max_items }}</span></p>
+            <p><strong>进程ID:</strong> <span id="process-id">{{ process_id }}</span></p>
+        </div>
+        
+        <div class="qrcode-container hidden" id="qrcode-container">
+            <h3>📱 登录提示</h3>
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin-bottom: 10px;"><strong>浏览器已自动打开，请按以下步骤操作：</strong></p>
+                <ol style="text-align: left; display: inline-block; margin: 0;">
+                    <li>在打开的浏览器窗口中，会显示对应平台的登录页面</li>
+                    <li>如果是第一次登录，请使用手机扫描页面上的二维码或输入手机号登录</li>
+                    <li>登录成功后，登录状态会自动保存，下次不需要重复登录</li>
+                    <li>登录完成后，爬取任务会自动开始</li>
+                </ol>
+            </div>
+            <div id="qrcode-image-container" style="display: none;">
+                <p>如果浏览器中没有显示二维码，可以查看下方二维码：</p>
+                <img id="qrcode-image" src="" alt="登录二维码">
+            </div>
+            <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                💡 提示：登录状态会保存在浏览器中，下次爬取同一平台时不需要重新登录
+            </p>
+        </div>
+        
+        <div id="login-hint" style="display: none;"></div>
+        
+        <div class="output-container" id="output-container">
+            <div class="output-line info">正在启动爬取任务...</div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-primary" onclick="refreshOutput()">刷新输出</button>
+            <button class="btn-danger" id="stop-btn" onclick="stopCrawl()">停止爬取</button>
+            <button class="btn-secondary" onclick="window.close()">关闭窗口</button>
+        </div>
+    </div>
+    
+    <script>
+        const processId = {{ process_id }};
+        const platform = '{{ platform }}';
+        const keywords = '{{ keywords }}';
+        const maxItems = {{ max_items }};
+        
+        let outputLines = [];
+        let qrcodeUrl = null;
+        
+        // 轮询获取输出
+        async function fetchOutput() {
+            try {
+                const response = await fetch(`/api/v1/mediacrawler/crawl/output/${processId}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        const errorData = await response.json();
+                        console.error('进程不存在:', errorData);
+                        addOutputLine(`错误: 进程不存在或已结束 (进程ID: ${processId})`, 'error');
+                        if (errorData.current_process_ids) {
+                            addOutputLine(`当前活跃进程ID: ${errorData.current_process_ids.join(', ')}`, 'info');
+                        }
+                        updateStatus('failed');
+                        return; // 停止轮询
+                    }
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    
+                    // 更新输出
+                    if (data.output && data.output.length > outputLines.length) {
+                        outputLines = data.output;
+                        updateOutput();
+                    }
+                    
+                    // 更新状态
+                    if (data.status) {
+                        updateStatus(data.status);
+                    }
+                    
+                    // 检查二维码（仅在浏览器中没有显示时显示备用二维码）
+                    if (data.qrcode_url && data.qrcode_url !== qrcodeUrl) {
+                        qrcodeUrl = data.qrcode_url;
+                        // 显示登录提示，但不强制显示二维码（因为浏览器中已经有）
+                        showLoginHint();
+                    }
+                    
+                    // 检查是否有错误或警告（特别是快手平台）
+                    if (data.output && data.output.length > 0) {
+                        const lastOutput = data.output[data.output.length - 1];
+                        const outputText = lastOutput.text || lastOutput;
+                        
+                        // 检查快手相关的错误提示
+                        if (platform === 'kuaishou' || platform === 'ks') {
+                            if (outputText.includes('登录') && outputText.includes('成功') && !outputText.includes('爬取')) {
+                                // 登录成功但未开始爬取
+                                const loginHint = document.getElementById('login-hint');
+                                if (loginHint) {
+                                    loginHint.style.display = 'block';
+                                    loginHint.innerHTML = `
+                                        <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                            <strong>⚠️ 登录成功，等待爬取开始...</strong>
+                                            <p style="margin-top: 10px; margin-bottom: 0;">
+                                                如果长时间未开始爬取，请检查：<br>
+                                                1. 浏览器中是否有验证码需要处理<br>
+                                                2. 关键词是否正确<br>
+                                                3. 是否有网络问题
+                                            </p>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 如果任务还在运行，继续轮询
+                    if (data.status === 'running' || data.status === 'pending') {
+                        setTimeout(fetchOutput, 2000); // 每2秒刷新一次
+                    }
+                }
+            } catch (error) {
+                console.error('获取输出失败:', error);
+                addOutputLine('获取输出失败: ' + error.message, 'error');
+                setTimeout(fetchOutput, 5000); // 出错后5秒重试
+            }
+        }
+        
+        function updateOutput() {
+            const container = document.getElementById('output-container');
+            container.innerHTML = '';
+            
+            outputLines.forEach(line => {
+                const div = document.createElement('div');
+                div.className = 'output-line ' + (line.type || 'info');
+                div.textContent = line.text || line;
+                container.appendChild(div);
+            });
+            
+            // 滚动到底部
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function addOutputLine(text, type = 'info') {
+            outputLines.push({ text, type });
+            updateOutput();
+        }
+        
+        function updateStatus(status) {
+            const badge = document.getElementById('status-badge');
+            const stopBtn = document.getElementById('stop-btn');
+            badge.className = 'status-badge status-' + status;
+            badge.textContent = {
+                'pending': '等待中',
+                'running': '运行中',
+                'completed': '已完成',
+                'failed': '失败',
+                'stopped': '已停止'
+            }[status] || status;
+            
+            // 根据状态启用/禁用停止按钮
+            if (status === 'running' || status === 'pending') {
+                stopBtn.disabled = false;
+            } else {
+                stopBtn.disabled = true;
+            }
+        }
+        
+        async function stopCrawl() {
+            if (!confirm('确定要停止爬取任务吗？')) {
+                return;
+            }
+            
+            const stopBtn = document.getElementById('stop-btn');
+            stopBtn.disabled = true;
+            stopBtn.textContent = '停止中...';
+            
+            try {
+                const response = await fetch(`/api/v1/mediacrawler/crawl/stop/${processId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addOutputLine('爬取任务已停止', 'warning');
+                    updateStatus('stopped');
+                    alert('爬取任务已成功停止');
+                } else {
+                    alert('停止失败: ' + (result.error || '未知错误'));
+                    stopBtn.disabled = false;
+                    stopBtn.textContent = '停止爬取';
+                }
+            } catch (error) {
+                console.error('停止爬取失败:', error);
+                alert('停止失败: ' + error.message);
+                stopBtn.disabled = false;
+                stopBtn.textContent = '停止爬取';
+            }
+        }
+        
+        function showLoginHint() {
+            const container = document.getElementById('qrcode-container');
+            container.classList.remove('hidden');
+            // 默认不显示备用二维码，因为浏览器中已经有
+            // 如果用户需要，可以手动显示
+        }
+        
+        function showQRCode(url) {
+            const container = document.getElementById('qrcode-container');
+            const imgContainer = document.getElementById('qrcode-image-container');
+            const img = document.getElementById('qrcode-image');
+            img.src = url;
+            imgContainer.style.display = 'block';
+            container.classList.remove('hidden');
+        }
+        
+        function refreshOutput() {
+            fetchOutput();
+        }
+        
+        // 页面加载时开始轮询
+        window.onload = function() {
+            fetchOutput();
+        };
+    </script>
+</body>
+</html>
+

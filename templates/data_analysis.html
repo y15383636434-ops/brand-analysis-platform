@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据分析与AI分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .file-item {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .file-item.selected {
+            border-color: #667eea;
+            background: #e7f3ff;
+        }
+        
+        .file-item input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .file-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            padding: 40px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .nav-links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+        }
+        
+        .info-box p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 数据分析与AI分析</h1>
+        <p class="subtitle">整理爬取的数据并使用AI进行深度分析</p>
+        
+        <div class="info-box">
+            <p><strong>功能说明：</strong></p>
+            <p>• 选择平台和数据文件</p>
+            <p>• 系统会自动整理数据并提取文本</p>
+            <p>• 使用AI进行情感分析、关键词提取和深度分析</p>
+            <p>• 分析结果会保存并可以查看</p>
+        </div>
+        
+        <form id="analysisForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label>选择平台 * (可多选)</label>
+                <div class="platform-select" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;">
+                    {% for platform in platforms %}
+                    <div class="platform-option" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="platform_{{ platform.code }}" name="platform" value="{{ platform.code }}" onchange="loadFiles()">
+                        <label for="platform_{{ platform.code }}" style="cursor: pointer; margin: 0;">{{ platform.name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <small style="color: #666; margin-top: 10px; display: block;">提示: 可以选择多个平台，系统会为每个平台分别加载文件列表</small>
+            </div>
+            
+            <div class="form-group">
+                <label>选择数据文件 * (可多选)</label>
+                <div id="fileList" class="file-list">
+                    <div style="text-align: center; color: #999; padding: 20px;">
+                        请先选择平台
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="include_comments" name="include_comments" checked>
+                    <label for="include_comments">包含评论数据</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="cross_platform" name="cross_platform" onchange="toggleAnalysisMode()">
+                    <label for="cross_platform"><strong>跨平台综合分析</strong>（合并多个平台的数据进行统一分析）</label>
+                </div>
+                <small style="color: #666; margin-top: 5px; display: block;">
+                    启用后，将合并所有选中平台的数据进行综合分析，适合对比不同平台的用户反馈
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="analysis_type">分析类型</label>
+                <select id="analysis_type" name="analysis_type">
+                    <option value="comprehensive">综合分析</option>
+                    <option value="brand_image">品牌形象分析</option>
+                    <option value="user_feedback">用户反馈分析</option>
+                    <option value="trend">趋势分析</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">开始分析</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>正在处理数据并进行AI分析，请稍候...</p>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">这可能需要几分钟时间</p>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="nav-links">
+            <a href="/api/v1/data-analysis/result">查看分析结果</a>
+            <a href="/api/v1/mediacrawler">返回爬虫控制台</a>
+            <a href="/docs">API文档</a>
+        </div>
+    </div>
+    
+    <script>
+        let selectedFiles = new Set();
+        
+        async function loadFiles() {
+            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platform"]:checked'))
+                .map(cb => cb.value);
+            
+            if (selectedPlatforms.length === 0) {
+                document.getElementById('fileList').innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">请先选择平台</div>';
+                return;
+            }
+            
+            const fileListDiv = document.getElementById('fileList');
+            fileListDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">正在加载文件列表...</div>';
+            
+            try {
+                let html = '';
+                const platformNames = {
+                    'xhs': '小红书',
+                    'douyin': '抖音',
+                    'weibo': '微博',
+                    'zhihu': '知乎',
+                    'bilibili': 'B站',
+                    'kuaishou': '快手',
+                    'tieba': '百度贴吧'
+                };
+                
+                // 为每个选中的平台加载文件
+                for (const platform of selectedPlatforms) {
+                    const platformName = platformNames[platform] || platform;
+                    html += `<h4 style="margin-top: 20px; margin-bottom: 10px; color: #333;">${platformName} 内容数据文件:</h4>`;
+                    
+                    try {
+                        const contentsResponse = await fetch(`/api/v1/data-analysis/files?platform=${platform}&data_type=contents`);
+                        const contentsData = await contentsResponse.json();
+                        
+                        if (contentsData.success && contentsData.files.length > 0) {
+                            contentsData.files.forEach(file => {
+                                const date = new Date(file.modified_time * 1000).toLocaleString('zh-CN');
+                                const sizeKB = (file.size / 1024).toFixed(2);
+                                const fileKey = `${platform}_${file.filename}`;
+                                html += `
+                                    <div class="file-item" onclick="toggleFile('${fileKey}', '${platform}', '${file.filename}')">
+                                        <input type="checkbox" id="file_${fileKey}" value="${fileKey}" data-platform="${platform}" data-filename="${file.filename}" onchange="toggleFile('${fileKey}', '${platform}', '${file.filename}')">
+                                        <label for="file_${fileKey}" style="cursor: pointer;">
+                                            <div class="file-name">${file.filename}</div>
+                                            <div class="file-info">大小: ${sizeKB} KB | 修改时间: ${date}</div>
+                                        </label>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            html += `<div style="color: #999; padding: 10px;">暂无内容数据文件</div>`;
+                        }
+                    } catch (error) {
+                        html += `<div style="color: #f00; padding: 10px;">加载失败: ${error.message}</div>`;
+                    }
+                }
+                
+                fileListDiv.innerHTML = html;
+                selectedFiles.clear();
+            } catch (error) {
+                fileListDiv.innerHTML = `<div style="color: #f00; padding: 10px;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        function toggleFile(fileKey, platform, filename) {
+            const checkbox = document.getElementById(`file_${fileKey}`);
+            
+            // 验证平台代码
+            if (!platform || platform.trim() === '') {
+                console.error('平台代码为空，无法选择文件');
+                alert('文件信息不完整，请刷新页面重试');
+                checkbox.checked = false;
+                return;
+            }
+            
+            if (checkbox.checked) {
+                selectedFiles.add(JSON.stringify({platform: platform, filename: filename}));
+                checkbox.closest('.file-item').classList.add('selected');
+                console.log(`已选择文件: platform=${platform}, filename=${filename}`);
+            } else {
+                selectedFiles.delete(JSON.stringify({platform: platform, filename: filename}));
+                checkbox.closest('.file-item').classList.remove('selected');
+                console.log(`已取消选择文件: platform=${platform}, filename=${filename}`);
+            }
+        }
+        
+        function toggleAnalysisMode() {
+            const crossPlatform = document.getElementById('cross_platform').checked;
+            // 可以在这里添加一些UI提示
+            if (crossPlatform) {
+                console.log('已启用跨平台综合分析模式');
+            }
+        }
+        
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const selectedPlatforms = Array.from(form.querySelectorAll('input[name="platform"]:checked'))
+                .map(cb => cb.value);
+            const includeComments = form.include_comments.checked;
+            const analysisType = form.analysis_type.value;
+            const crossPlatform = form.cross_platform.checked;
+            
+            if (selectedPlatforms.length === 0) {
+                alert('请至少选择一个平台');
+                return;
+            }
+            
+            if (selectedFiles.size === 0) {
+                alert('请至少选择一个文件');
+                return;
+            }
+            
+            // 按平台分组文件
+            const filesByPlatform = {};
+            selectedFiles.forEach(fileStr => {
+                const file = JSON.parse(fileStr);
+                if (!filesByPlatform[file.platform]) {
+                    filesByPlatform[file.platform] = [];
+                }
+                filesByPlatform[file.platform].push(file.filename);
+            });
+            
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // 显示加载状态
+            loading.classList.add('show');
+            result.style.display = 'none';
+            submitBtn.disabled = true;
+            
+            try {
+                if (crossPlatform) {
+                    // 跨平台综合分析（即使只有一个平台也使用跨平台逻辑）
+                    
+                    // 验证filesByPlatform不为空
+                    if (!filesByPlatform || Object.keys(filesByPlatform).length === 0) {
+                        throw new Error('请至少选择一个文件');
+                    }
+                    
+                    // 验证每个平台至少有一个文件
+                    let hasValidFiles = false;
+                    for (const platform in filesByPlatform) {
+                        if (filesByPlatform[platform] && filesByPlatform[platform].length > 0) {
+                            hasValidFiles = true;
+                            break;
+                        }
+                    }
+                    if (!hasValidFiles) {
+                        throw new Error('请至少选择一个文件');
+                    }
+                    
+                    const formData = new FormData();
+                    
+                    // 确保files_json是有效的JSON字符串
+                    const filesJsonStr = JSON.stringify(filesByPlatform);
+                    console.log('发送的files_json:', filesJsonStr);
+                    console.log('filesByPlatform:', filesByPlatform);
+                    
+                    // 验证JSON字符串不为空
+                    if (!filesJsonStr || filesJsonStr === '{}') {
+                        throw new Error('文件数据无效，请重新选择文件');
+                    }
+                    
+                    // 确保所有值都是有效的字符串
+                    formData.append('files_json', filesJsonStr);
+                    formData.append('include_comments', includeComments ? 'true' : 'false');
+                    formData.append('analysis_type', String(analysisType || 'comprehensive').trim());
+                    formData.append('cross_platform', 'true');
+                    
+                    // 【关键修复】跨平台分析时，也传递platform和filenames参数（即使为空），避免FastAPI 422错误
+                    // 获取第一个平台作为占位符（如果后端需要）
+                    const firstPlatform = Object.keys(filesByPlatform)[0] || '';
+                    formData.append('platform', firstPlatform);
+                    // 传递第一个平台的文件名作为占位符
+                    const firstFilenames = filesByPlatform[firstPlatform] ? filesByPlatform[firstPlatform].join(',') : '';
+                    formData.append('filenames', firstFilenames);
+                    
+                    console.log('FormData内容:', {
+                        files_json: filesJsonStr.substring(0, 100) + '...',
+                        include_comments: includeComments ? 'true' : 'false',
+                        analysis_type: String(analysisType || 'comprehensive').trim(),
+                        cross_platform: 'true',
+                        platform: firstPlatform,
+                        filenames: firstFilenames
+                    });
+                    
+                    console.log('发送的FormData参数:');
+                    for (let [key, value] of formData.entries()) {
+                        console.log(key + ':', typeof value === 'string' && value.length > 100 ? value.substring(0, 100) + '...' : value);
+                    }
+                    
+                    const response = await fetch('/api/v1/data-analysis/process', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        let errorMessage = `请求失败: ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.error || errorData.detail || errorMessage;
+                        } catch (e) {
+                            const errorText = await response.text();
+                            errorMessage = errorText || errorMessage;
+                        }
+                        console.error('请求失败:', response.status, errorMessage);
+                        throw new Error(errorMessage);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    loading.classList.remove('show');
+                    submitBtn.disabled = false;
+                    
+                    if (data.success && data.result) {
+                        result.style.display = 'block';
+                        result.className = 'result success';
+                        
+                        const resultData = data.result;
+                        const platformNames = resultData.platform_names || resultData.platforms || [];
+                        
+                        let resultHtml = `<h3>✅ 跨平台综合分析完成</h3>`;
+                        resultHtml += `<p><strong>分析平台:</strong> ${platformNames.join(', ')}</p>`;
+                        resultHtml += `<p><strong>总数据量:</strong> ${resultData.processed_data?.total_items || 0}条数据, ${resultData.processed_data?.total_texts || 0}条文本, ${resultData.processed_data?.total_comments || 0}条评论</p>`;
+                        
+                        // 显示各平台统计
+                        if (resultData.processed_data?.platform_stats) {
+                            resultHtml += `<div style="margin-top: 15px;"><strong>各平台数据统计:</strong></div>`;
+                            const platformNamesMap = {
+                                'xhs': '小红书',
+                                'douyin': '抖音',
+                                'weibo': '微博',
+                                'zhihu': '知乎',
+                                'bilibili': 'B站',
+                                'kuaishou': '快手',
+                                'tieba': '百度贴吧'
+                            };
+                            
+                            for (const [platform, stats] of Object.entries(resultData.processed_data.platform_stats)) {
+                                const platformName = platformNamesMap[platform] || platform;
+                                resultHtml += `
+                                    <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                        <p style="font-weight: bold;">${platformName}</p>
+                                        <p>数据: ${stats.total_items}条 | 文本: ${stats.texts_count}条 | 评论: ${stats.comments_count}条 | 文件: ${stats.file_count}个</p>
+                                    </div>
+                                `;
+                            }
+                        }
+                        
+                        resultHtml += `<p style="margin-top: 15px;"><strong>情感分析:</strong> 正面${resultData.sentiment_analysis?.positive_count || 0}条, 负面${resultData.sentiment_analysis?.negative_count || 0}条, 中性${resultData.sentiment_analysis?.neutral_count || 0}条</p>`;
+                        resultHtml += `<p><strong>关键词数量:</strong> ${resultData.keywords?.length || 0}个</p>`;
+                        
+                        // 显示AI洞察摘要
+                        if (resultData.llm_insights && resultData.llm_insights.summary) {
+                            resultHtml += `<div style="margin-top: 15px; padding: 15px; background: #e7f3ff; border-left: 4px solid #667eea; border-radius: 5px;">`;
+                            resultHtml += `<p style="font-weight: bold; margin-bottom: 10px;">AI分析摘要:</p>`;
+                            resultHtml += `<p style="line-height: 1.6;">${resultData.llm_insights.summary}</p>`;
+                            resultHtml += `</div>`;
+                        }
+                        
+                        resultHtml += `<p style="margin-top: 15px;"><a href="/api/v1/data-analysis/result">查看详细分析结果</a></p>`;
+                        result.innerHTML = resultHtml;
+                    } else {
+                        result.style.display = 'block';
+                        result.className = 'result error';
+                        result.innerHTML = `<h3>❌ 分析失败</h3><p>${data.error || '未知错误'}</p>`;
+                    }
+                } else {
+                    // 单平台分析（原有逻辑）
+                    console.log('使用单平台分析模式');
+                    console.log('filesByPlatform:', filesByPlatform);
+                    
+                    // 验证filesByPlatform不为空
+                    if (!filesByPlatform || Object.keys(filesByPlatform).length === 0) {
+                        throw new Error('请至少选择一个文件');
+                    }
+                    
+                    const promises = [];
+                    for (const platform in filesByPlatform) {
+                        if (!platform || platform.trim() === '') {
+                            console.error('平台代码为空，跳过');
+                            continue;
+                        }
+                        
+                        const filenameList = filesByPlatform[platform];
+                        if (!filenameList || filenameList.length === 0) {
+                            console.error(`平台 ${platform} 没有文件，跳过`);
+                            continue;
+                        }
+                        
+                        const filenames = filenameList.join(',');
+                        if (!filenames || filenames.trim() === '') {
+                            console.error(`平台 ${platform} 文件名为空，跳过`);
+                            continue;
+                        }
+                        
+                        const formData = new FormData();
+                        // 确保所有值都是有效的字符串
+                        formData.append('platform', String(platform).trim());
+                        formData.append('filenames', String(filenames).trim());
+                        formData.append('include_comments', includeComments ? 'true' : 'false');
+                        formData.append('analysis_type', String(analysisType || 'comprehensive').trim());
+                        formData.append('cross_platform', 'false');
+                        
+                        // 单平台分析时，不传递files_json参数
+                        // formData.append('files_json', '');
+                        
+                        console.log(`发送单平台分析请求: platform=${platform}, filenames=${filenames}`);
+                        console.log('FormData内容:', {
+                            platform: String(platform).trim(),
+                            filenames: String(filenames).trim(),
+                            include_comments: includeComments ? 'true' : 'false',
+                            analysis_type: String(analysisType || 'comprehensive').trim(),
+                            cross_platform: 'false'
+                        });
+                        
+                        promises.push(
+                            fetch('/api/v1/data-analysis/process', {
+                                method: 'POST',
+                                body: formData
+                            }).then(async res => {
+                                if (!res.ok) {
+                                    let errorMessage = `请求失败: ${res.status}`;
+                                    let errorDetails = null;
+                                    try {
+                                        const errorData = await res.json();
+                                        errorMessage = errorData.error || errorData.detail || errorMessage;
+                                        errorDetails = errorData;
+                                    } catch (e) {
+                                        const errorText = await res.text();
+                                        errorMessage = errorText || errorMessage;
+                                    }
+                                    console.error('请求失败:', res.status, errorMessage, errorDetails);
+                                    return { 
+                                        success: false, 
+                                        error: errorMessage,
+                                        status: res.status,
+                                        details: errorDetails
+                                    };
+                                }
+                                return res.json();
+                            }).catch(error => {
+                                console.error('请求异常:', error);
+                                return { 
+                                    success: false, 
+                                    error: `网络错误: ${error.message}`,
+                                    details: error
+                                };
+                            })
+                        );
+                    }
+                    
+                    // 验证至少有一个有效的请求
+                    if (promises.length === 0) {
+                        throw new Error('没有有效的平台和文件组合，请重新选择');
+                    }
+                    
+                    const results = await Promise.all(promises);
+                    
+                    // 隐藏加载状态
+                    loading.classList.remove('show');
+                    submitBtn.disabled = false;
+                    
+                    const successCount = results.filter(r => r.success).length;
+                    const failCount = results.filter(r => !r.success).length;
+                    
+                    // 显示结果
+                    result.style.display = 'block';
+                    if (successCount > 0) {
+                        result.className = 'result success';
+                        let resultHtml = `<h3>✅ 分析完成</h3><p>成功: ${successCount} 个平台，失败: ${failCount} 个平台</p>`;
+                        
+                        // 显示每个平台的结果
+                        results.forEach((r, index) => {
+                            const platform = Object.keys(filesByPlatform)[index];
+                            const platformName = {
+                                'xhs': '小红书',
+                                'douyin': '抖音',
+                                'weibo': '微博',
+                                'zhihu': '知乎',
+                                'bilibili': 'B站',
+                                'kuaishou': '快手',
+                                'tieba': '百度贴吧'
+                            }[platform] || platform;
+                            
+                            if (r.success && r.result) {
+                                const resultData = r.result;
+                                resultHtml += `
+                                    <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                        <p style="font-weight: bold; color: #28a745;">✓ ${platformName}</p>
+                                        <p><strong>处理数据:</strong> ${resultData.processed_data?.total_items || 0}条数据, ${resultData.processed_data?.total_texts || 0}条文本, ${resultData.processed_data?.total_comments || 0}条评论</p>
+                                        <p><strong>情感分析:</strong> 正面${resultData.sentiment_analysis?.positive_count || 0}条, 负面${resultData.sentiment_analysis?.negative_count || 0}条, 中性${resultData.sentiment_analysis?.neutral_count || 0}条</p>
+                                        <p><strong>关键词数量:</strong> ${resultData.keywords?.length || 0}个</p>
+                                    </div>
+                                `;
+                            } else {
+                                const errorMsg = r.error || '分析失败';
+                                const errorDetails = r.details ? ` (详情: ${JSON.stringify(r.details)})` : '';
+                                resultHtml += `<p style="color: #dc3545;">✗ ${platformName}: ${errorMsg}${errorDetails}</p>`;
+                            }
+                        });
+                        
+                        resultHtml += `<p style="margin-top: 15px;"><a href="/api/v1/data-analysis/result">查看所有分析结果</a></p>`;
+                        result.innerHTML = resultHtml;
+                    } else {
+                        result.className = 'result error';
+                        result.innerHTML = `<h3>❌ 分析失败</h3><p>${results[0]?.error || '未知错误'}</p>`;
+                    }
+                }
+            } catch (error) {
+                loading.classList.remove('show');
+                submitBtn.disabled = false;
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = `<h3>❌ 请求失败</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
