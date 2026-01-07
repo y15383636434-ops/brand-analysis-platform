@@ -1,0 +1,22 @@
+# 确保所有文本文件使用UTF-8编码
+* text=auto eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.sql text eol=lf
+*.txt text eol=lf
+*.bat text eol=crlf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.exe binary
+
