@@ -370,13 +370,15 @@ async def process_data(request: Request):
 @router.get("/data-analysis/result", response_class=HTMLResponse)
 async def view_analysis_result(
     request: Request,
-    platform: Optional[str] = Query(None)
+    platform: Optional[str] = Query(None),
+    brand_id: Optional[int] = Query(None)
 ):
     """查看分析结果页面"""
     return templates.TemplateResponse("analysis_result.html", {
         "request": request,
         "platform": platform,
-        "platform_name": PLATFORM_MAP.get(platform, "全部") if platform else "全部"
+        "platform_name": PLATFORM_MAP.get(platform, "全部") if platform else "全部",
+        "brand_id": brand_id
     })
 
 

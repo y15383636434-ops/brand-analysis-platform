@@ -48,9 +48,9 @@ async def generate_report(
     db.commit()
     db.refresh(report)
     
-    # TODO: 这里应该异步生成报告（使用Celery）
-    # from app.tasks.report import generate_report_task
-    # generate_report_task.delay(report.id)
+    # 异步生成报告（使用Celery）
+    from app.tasks.report_tasks import generate_report_task
+    generate_report_task.delay(report.id)
     
     return {
         "code": 200,

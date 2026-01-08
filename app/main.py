@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import HTTPException
 from loguru import logger
 import sys
 import os
@@ -24,23 +25,10 @@ if sys.platform == 'win32':
 from config import settings
 from app.api.v1 import brands, crawl_tasks, analysis_tasks, reports, data_viewer, crawler_ui, mediacrawler_ui, data_analysis, dashboard
 from app.core.database import init_db
+from app.core.logger import setup_logging
 
-# 配置日志（设置UTF-8编码）
-logger.remove()
-logger.add(
-    sys.stdout,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>",
-    level=settings.LOG_LEVEL,
-    colorize=True
-)
-logger.add(
-    settings.LOG_FILE,
-    rotation="10 MB",
-    retention="7 days",
-    level=settings.LOG_LEVEL,
-    encoding='utf-8',
-    errors='replace'
-)
+# 配置日志
+logger = setup_logging()
 
 
 # ✅ 定义生命周期管理器 (替代 on_event)
@@ -202,7 +190,35 @@ async def global_exception_handler(request, exc):
     )
 
 
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import RequestValidationError, HTTPException
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    """处理HTTP异常，统一返回JSON格式"""
+    # 对于分析相关的API，返回统一的JSON格式
+    if "/brands/" in str(request.url) and "/analysis" in str(request.url):
+        return JSONResponse(
+            status_code=200,  # 统一返回200，用code表示业务状态
+            content={
+                "code": exc.status_code,
+                "message": exc.detail or "请求失败",
+                "data": {
+                    "error": exc.detail or "请求失败",
+                    "message": exc.detail or "请求失败"
+                }
+            }
+        )
+    
+    # 其他API保持原有格式
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": exc.status_code,
+            "message": exc.detail or "请求失败",
+            "detail": exc.detail
+        }
+    )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc: RequestValidationError):
@@ -236,6 +252,6 @@ if __name__ == "__main__":
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,
-        reload_exclude=["MediaCrawler/**", "crawl_scripts/**"] if settings.DEBUG else None
+        reload_excludes=["MediaCrawler/**", "crawl_scripts/**"] if settings.DEBUG else None
     )
 

@@ -221,6 +221,34 @@
             <p>• 系统会自动整理数据并提取文本</p>
             <p>• 使用AI进行情感分析、关键词提取和深度分析</p>
             <p>• 分析结果会保存并可以查看</p>
+            <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
+                <strong>📊 品牌分析：</strong>
+                <button onclick="showBrandSelector()" style="margin-left: 10px; padding: 6px 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                    选择品牌生成新报告
+                </button>
+            </p>
+        </div>
+
+        <!-- 最近分析报告列表 -->
+        <div id="recentReports" style="margin-bottom: 30px; display: none;">
+            <h3 style="margin-bottom: 15px; color: #333; font-size: 18px; display: flex; align-items: center;">
+                📈 最近生成的分析报告
+                <span style="font-size: 12px; color: #666; font-weight: normal; margin-left: 10px;">(点击查看详情)</span>
+            </h3>
+            <div id="reportList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                <!-- 动态加载 -->
+            </div>
+        </div>
+        
+        <!-- 品牌选择器 -->
+        <div id="brandSelector" style="display: none; margin-bottom: 25px; padding: 20px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
+            <h3 style="margin-bottom: 15px; color: #333;">选择品牌查看分析报告</h3>
+            <div id="brandList" style="margin-bottom: 15px;">
+                <div class="loading">正在加载品牌列表...</div>
+            </div>
+            <button onclick="hideBrandSelector()" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                取消
+            </button>
         </div>
         
         <form id="analysisForm" onsubmit="handleSubmit(event)">
@@ -277,11 +305,27 @@
         </form>
         
         <div class="loading" id="loading">
-            <p>正在处理数据并进行AI分析，请稍候...</p>
-            <p style="font-size: 14px; color: #666; margin-top: 10px;">这可能需要几分钟时间</p>
+            <div style="text-align: center;">
+                <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                <p style="font-size: 18px; font-weight: 500; color: #333; margin-bottom: 10px;">正在处理数据并进行AI分析，请稍候...</p>
+                <p style="font-size: 14px; color: #666; margin-top: 10px;">这可能需要几分钟时间，请耐心等待</p>
+                <div id="loadingProgress" style="margin-top: 20px; padding: 0 20px;">
+                    <div style="background: #f0f0f0; border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 10px;">
+                        <div id="progressBar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.5s ease;"></div>
+                    </div>
+                    <p id="progressText" style="font-size: 12px; color: #999;">准备中...</p>
+                </div>
+            </div>
         </div>
         
         <div class="result" id="result"></div>
+        
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
         
         <div class="nav-links">
             <a href="/api/v1/data-analysis/result">查看分析结果</a>
@@ -303,7 +347,12 @@
             }
             
             const fileListDiv = document.getElementById('fileList');
-            fileListDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">正在加载文件列表...</div>';
+            fileListDiv.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px; color: #666;">正在加载文件列表...</p>
+                </div>
+            `;
             
             try {
                 let html = '';
@@ -345,14 +394,34 @@
                             html += `<div style="color: #999; padding: 10px;">暂无内容数据文件</div>`;
                         }
                     } catch (error) {
-                        html += `<div style="color: #f00; padding: 10px;">加载失败: ${error.message}</div>`;
+                        html += `
+                            <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; margin-top: 10px;">
+                                <p style="color: #856404; font-weight: 500; margin-bottom: 5px;">⚠️ ${platformName} 加载失败</p>
+                                <p style="color: #856404; font-size: 12px;">${error.message}</p>
+                                <button onclick="loadFiles()" style="margin-top: 10px; padding: 5px 10px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">
+                                    重试
+                                </button>
+                            </div>
+                        `;
                     }
+                }
+                
+                if (html === '') {
+                    html = '<div style="text-align: center; color: #999; padding: 20px;">没有找到任何文件</div>';
                 }
                 
                 fileListDiv.innerHTML = html;
                 selectedFiles.clear();
             } catch (error) {
-                fileListDiv.innerHTML = `<div style="color: #f00; padding: 10px;">加载失败: ${error.message}</div>`;
+                fileListDiv.innerHTML = `
+                    <div style="padding: 20px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 5px;">
+                        <p style="color: #721c24; font-weight: 500; margin-bottom: 10px;">❌ 加载失败</p>
+                        <p style="color: #721c24; font-size: 14px; margin-bottom: 15px;">${error.message}</p>
+                        <button onclick="loadFiles()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            重试加载
+                        </button>
+                    </div>
+                `;
             }
         }
         
@@ -419,11 +488,41 @@
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
             const submitBtn = document.getElementById('submitBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
             
             // 显示加载状态
             loading.classList.add('show');
             result.style.display = 'none';
             submitBtn.disabled = true;
+            
+            // 重置进度
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressText) progressText.textContent = '准备中...';
+            
+            // 模拟进度更新
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += Math.random() * 10;
+                    if (progress > 90) progress = 90;
+                    if (progressBar) progressBar.style.width = progress + '%';
+                    if (progressText) {
+                        if (progress < 30) {
+                            progressText.textContent = '正在读取数据文件...';
+                        } else if (progress < 60) {
+                            progressText.textContent = '正在提取文本内容...';
+                        } else if (progress < 80) {
+                            progressText.textContent = '正在进行AI分析...';
+                        } else {
+                            progressText.textContent = '正在生成分析报告...';
+                        }
+                    }
+                }
+            }, 500);
+            
+            // 保存interval以便清除
+            window.currentProgressInterval = progressInterval;
             
             try {
                 if (crossPlatform) {
@@ -506,8 +605,21 @@
                     
                     const data = await response.json();
                     
-                    loading.classList.remove('show');
-                    submitBtn.disabled = false;
+                    // 清除进度更新
+                    if (window.currentProgressInterval) {
+                        clearInterval(window.currentProgressInterval);
+                        window.currentProgressInterval = null;
+                    }
+                    
+                    // 完成进度
+                    if (progressBar) progressBar.style.width = '100%';
+                    if (progressText) progressText.textContent = '分析完成！';
+                    
+                    // 延迟隐藏加载状态，让用户看到完成动画
+                    setTimeout(() => {
+                        loading.classList.remove('show');
+                        submitBtn.disabled = false;
+                    }, 500);
                     
                     if (data.success && data.result) {
                         result.style.display = 'block';
@@ -555,7 +667,19 @@
                             resultHtml += `</div>`;
                         }
                         
-                        resultHtml += `<p style="margin-top: 15px;"><a href="/api/v1/data-analysis/result">查看详细分析结果</a></p>`;
+                        resultHtml += `
+                            <div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                                <p style="font-weight: 500; margin-bottom: 10px;">📊 查看详细结果</p>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <a href="/api/v1/data-analysis/result" style="padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                        查看所有分析结果
+                                    </a>
+                                    <button onclick="location.reload()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        继续分析其他数据
+                                    </button>
+                                </div>
+                            </div>
+                        `;
                         result.innerHTML = resultHtml;
                     } else {
                         result.style.display = 'block';
@@ -654,9 +778,21 @@
                     
                     const results = await Promise.all(promises);
                     
-                    // 隐藏加载状态
-                    loading.classList.remove('show');
-                    submitBtn.disabled = false;
+                    // 清除进度更新
+                    if (window.currentProgressInterval) {
+                        clearInterval(window.currentProgressInterval);
+                        window.currentProgressInterval = null;
+                    }
+                    
+                    // 完成进度
+                    if (progressBar) progressBar.style.width = '100%';
+                    if (progressText) progressText.textContent = '分析完成！';
+                    
+                    // 延迟隐藏加载状态
+                    setTimeout(() => {
+                        loading.classList.remove('show');
+                        submitBtn.disabled = false;
+                    }, 500);
                     
                     const successCount = results.filter(r => r.success).length;
                     const failCount = results.filter(r => !r.success).length;
@@ -697,7 +833,19 @@
                             }
                         });
                         
-                        resultHtml += `<p style="margin-top: 15px;"><a href="/api/v1/data-analysis/result">查看所有分析结果</a></p>`;
+                        resultHtml += `
+                            <div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                                <p style="font-weight: 500; margin-bottom: 10px;">📊 查看详细结果</p>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <a href="/api/v1/data-analysis/result" style="padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                        查看所有分析结果
+                                    </a>
+                                    <button onclick="location.reload()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        继续分析其他数据
+                                    </button>
+                                </div>
+                            </div>
+                        `;
                         result.innerHTML = resultHtml;
                     } else {
                         result.className = 'result error';
@@ -705,13 +853,172 @@
                     }
                 }
             } catch (error) {
+                // 清除进度更新
+                if (window.currentProgressInterval) {
+                    clearInterval(window.currentProgressInterval);
+                    window.currentProgressInterval = null;
+                }
+                
                 loading.classList.remove('show');
                 submitBtn.disabled = false;
                 result.style.display = 'block';
                 result.className = 'result error';
-                result.innerHTML = `<h3>❌ 请求失败</h3><p>${error.message}</p>`;
+                
+                // 更详细的错误信息
+                let errorMessage = error.message || '未知错误';
+                let errorDetails = '';
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage = '网络连接失败';
+                    errorDetails = '<p style="margin-top: 10px; font-size: 14px; color: #666;">请检查网络连接，确保服务器正在运行</p>';
+                } else if (error.message.includes('422') || error.message.includes('格式错误')) {
+                    errorMessage = '请求格式错误';
+                    errorDetails = '<p style="margin-top: 10px; font-size: 14px; color: #666;">请确保已正确选择平台和文件</p>';
+                } else if (error.message.includes('500') || error.message.includes('服务器错误')) {
+                    errorMessage = '服务器处理错误';
+                    errorDetails = '<p style="margin-top: 10px; font-size: 14px; color: #666;">服务器处理请求时发生错误，请稍后重试或联系管理员</p>';
+                }
+                
+                result.innerHTML = `
+                    <h3>❌ 请求失败</h3>
+                    <p style="font-weight: 500;">${errorMessage}</p>
+                    ${errorDetails}
+                    <p style="margin-top: 15px; font-size: 12px; color: #999;">错误详情: ${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        刷新页面重试
+                    </button>
+                `;
             }
         }
+        
+        // 品牌选择功能
+        async function showBrandSelector() {
+            const selector = document.getElementById('brandSelector');
+            const brandList = document.getElementById('brandList');
+            
+            selector.style.display = 'block';
+            brandList.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px; color: #666;">正在加载品牌列表...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/v1/brands?page=1&page_size=100');
+                const data = await response.json();
+                
+                if (data.code === 200 && data.data.items.length > 0) {
+                    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">';
+                    data.data.items.forEach(brand => {
+                        html += `
+                            <div style="padding: 15px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #e0e0e0; transition: all 0.3s;" 
+                                 onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 2px 8px rgba(102,126,234,0.3)'"
+                                 onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"
+                                 onclick="viewBrandAnalysis(${brand.id}, '${brand.name}')">
+                                <h4 style="margin-bottom: 5px; color: #333;">${brand.name}</h4>
+                                <p style="font-size: 12px; color: #666;">ID: ${brand.id}</p>
+                                ${brand.description ? `<p style="font-size: 12px; color: #999; margin-top: 5px;">${brand.description.substring(0, 30)}...</p>` : ''}
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    brandList.innerHTML = html;
+                } else {
+                    brandList.innerHTML = `
+                        <div style="text-align: center; padding: 20px; background: #fff3cd; border-radius: 8px;">
+                            <p style="color: #856404; font-weight: 500; margin-bottom: 10px;">📋 暂无品牌数据</p>
+                            <p style="color: #856404; font-size: 14px; margin-bottom: 15px;">请先创建品牌，然后启动分析任务</p>
+                            <a href="/api/v1/brands" style="padding: 8px 16px; background: #ffc107; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                前往品牌管理
+                            </a>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                brandList.innerHTML = `
+                    <div style="padding: 20px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 5px;">
+                        <p style="color: #721c24; font-weight: 500; margin-bottom: 10px;">❌ 加载失败</p>
+                        <p style="color: #721c24; font-size: 14px; margin-bottom: 15px;">${error.message}</p>
+                        <button onclick="showBrandSelector()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            重试
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function hideBrandSelector() {
+            document.getElementById('brandSelector').style.display = 'none';
+        }
+        
+        function viewBrandAnalysis(brandId, brandName) {
+            // 在当前窗口（iframe）打开品牌分析结果页面
+            const url = `/api/v1/brands/${brandId}/analysis/view`;
+            window.location.href = url;
+        }
+        
+        // 页面卸载时清理定时器
+        window.addEventListener('beforeunload', () => {
+            if (window.currentProgressInterval) {
+                clearInterval(window.currentProgressInterval);
+            }
+        });
+
+        // 加载最近的分析报告
+        async function loadRecentReports() {
+            try {
+                const response = await fetch('/api/v1/analysis/recent?limit=6');
+                const data = await response.json();
+                
+                if (data.code === 200 && data.data.length > 0) {
+                    const listContainer = document.getElementById('reportList');
+                    let html = '';
+                    
+                    data.data.forEach(task => {
+                        // 格式化时间
+                        const date = new Date(task.completed_at);
+                        const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        
+                        html += `
+                            <div onclick="viewBrandAnalysis(${task.brand_id}, '${task.brand_name}')" 
+                                 style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                    <span style="font-weight: bold; color: #333; font-size: 16px;">${task.brand_name}</span>
+                                    <span style="font-size: 12px; color: #28a745; background: #e6f9ed; padding: 2px 6px; border-radius: 4px;">已完成</span>
+                                </div>
+                                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">分析类型: ${task.analysis_type === 'full' ? '全量分析' : '综合分析'}</div>
+                                <div style="font-size: 12px; color: #999;">生成时间: ${timeStr}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    listContainer.innerHTML = html;
+                    document.getElementById('recentReports').style.display = 'block';
+                    
+                    // 添加悬停效果
+                    const items = listContainer.querySelectorAll('div[onclick]');
+                    items.forEach(item => {
+                        item.onmouseover = function() {
+                            this.style.transform = 'translateY(-2px)';
+                            this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.2)';
+                            this.style.borderColor = '#667eea';
+                        };
+                        item.onmouseout = function() {
+                            this.style.transform = 'translateY(0)';
+                            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                            this.style.borderColor = '#e0e0e0';
+                        };
+                    });
+                }
+            } catch (error) {
+                console.error('加载最近报告失败:', error);
+            }
+        }
+        
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', loadRecentReports);
+
     </script>
 </body>
 </html>

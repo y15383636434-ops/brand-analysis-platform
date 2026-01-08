@@ -158,11 +158,20 @@
     
     <script>
         const platform = '{{ platform }}';
+        const urlParams = new URLSearchParams(window.location.search);
+        const brandId = urlParams.get('brand_id');
         
         async function loadResults() {
             const container = document.getElementById('resultContainer');
             
             try {
+                // 如果有品牌ID，加载品牌分析结果
+                if (brandId) {
+                    await loadBrandAnalysis(brandId, container);
+                    return;
+                }
+                
+                // 否则加载旧的分析结果
                 const url = platform 
                     ? `/api/v1/data-analysis/result/list?platform=${platform}`
                     : '/api/v1/data-analysis/result/list';
@@ -270,6 +279,529 @@
                 container.innerHTML = `<div class="empty">加载失败: ${error.message}</div>`;
             }
         }
+        
+        async function loadBrandAnalysis(brandId, container) {
+            try {
+                // 验证brandId
+                if (!brandId || isNaN(brandId)) {
+                    throw new Error('无效的品牌ID');
+                }
+                
+                // 获取品牌分析结果（包含图表）
+                const response = await fetch(`/api/v1/brands/${brandId}/analysis?include_charts=true`);
+                
+                // 解析响应数据
+                let data;
+                try {
+                    data = await response.json();
+                    console.log('API响应数据:', data); // 调试信息
+                } catch (e) {
+                    // 如果JSON解析失败，尝试获取文本
+                    const text = await response.text();
+                    console.error('JSON解析失败:', text);
+                    throw new Error(`服务器响应格式错误: ${response.status} - ${text.substring(0, 100)}`);
+                }
+                
+                // 检查响应数据格式
+                if (!data || typeof data !== 'object') {
+                    console.error('数据格式错误:', data);
+                    throw new Error('服务器返回的数据格式不正确');
+                }
+                
+                // 如果HTTP状态不是200，但也没有code字段，说明是FastAPI的默认错误格式
+                // 这种情况下，将detail转换为我们的格式
+                if (!response.ok && !data.code) {
+                    console.log('检测到FastAPI默认错误格式，转换为统一格式');
+                    // 将FastAPI的默认错误格式转换为我们的格式
+                    if (data.detail) {
+                        // 判断是否是"暂无分析结果"
+                        if (data.detail.includes('暂无分析结果') || data.detail.includes('还没有完成分析任务')) {
+                            data = {
+                                code: 404,
+                                message: data.detail,
+                                data: {
+                                    brand_id: brandId,
+                                    message: data.detail
+                                }
+                            };
+                        } else {
+                            throw new Error(data.detail || data.message || `HTTP错误: ${response.status}`);
+                        }
+                    } else {
+                        throw new Error(data.message || `HTTP错误: ${response.status}`);
+                    }
+                }
+                
+                // 处理不同的响应状态
+                console.log('响应code:', data.code); // 调试信息
+                if (data.code === 404) {
+                    console.log('处理404情况'); // 调试信息
+                    // 没有分析结果
+                    const brandName = data.data.brand_name || '该品牌';
+                    container.innerHTML = `
+                        <div class="empty">
+                            <h3>📊 暂无分析结果</h3>
+                            <p style="font-size: 16px; margin: 15px 0;">${data.data.message || `${brandName}还没有完成分析任务，请先启动分析`}</p>
+                            <div style="margin-top: 30px; padding: 20px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                                <h4 style="margin-bottom: 15px; color: #333;">开始分析</h4>
+                                <p style="margin-bottom: 15px; color: #666;">点击下方按钮启动分析任务，系统将自动：</p>
+                                <ul style="text-align: left; display: inline-block; color: #666; margin-bottom: 20px;">
+                                    <li>从数据库读取品牌相关数据</li>
+                                    <li>进行情感分析、关键词提取、主题分析</li>
+                                    <li>使用AI生成深度洞察</li>
+                                    <li>生成可视化图表</li>
+                                </ul>
+                                <button onclick="startAnalysis(${brandId})" id="startAnalysisBtn" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 500; cursor: pointer; transition: transform 0.2s;">
+                                    启动分析任务
+                                </button>
+                                <div id="analysisStatus" style="margin-top: 15px; display: none;"></div>
+                            </div>
+                            <div style="margin-top: 20px;">
+                                <a href="/api/v1/brands/${brandId}" style="color: #667eea; text-decoration: none; margin: 0 10px;">查看品牌详情</a>
+                                <a href="/api/v1/data-analysis" style="color: #667eea; text-decoration: none; margin: 0 10px;">返回数据分析</a>
+                                <a href="/api/v1/brands" style="color: #667eea; text-decoration: none; margin: 0 10px;">品牌列表</a>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (data.code === 202) {
+                    // 分析任务进行中
+                    const progress = data.data.progress || 0;
+                    const progressBarId = `progress-bar-${brandId}`;
+                    const progressTextId = `progress-text-${brandId}`;
+                    
+                    container.innerHTML = `
+                        <div class="empty">
+                            <h3>⏳ 分析任务进行中</h3>
+                            <p>分析任务正在处理中，请稍候...</p>
+                            <div style="margin: 20px 0;">
+                                <div style="background: #f0f0f0; border-radius: 10px; height: 20px; overflow: hidden;">
+                                    <div id="${progressBarId}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${progress}%; transition: width 0.5s ease;"></div>
+                                </div>
+                                <p id="${progressTextId}" style="margin-top: 10px; color: #666;">进度: ${progress}%</p>
+                            </div>
+                            <p style="margin-top: 20px;">
+                                <button onclick="location.reload()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    手动刷新
+                                </button>
+                            </p>
+                        </div>
+                    `;
+                    
+                    // 启动轮询，每3秒更新一次进度
+                    if (!window.analysisPollingIntervals) {
+                        window.analysisPollingIntervals = {};
+                    }
+                    
+                    // 清除之前的轮询（如果存在）
+                    if (window.analysisPollingIntervals[brandId]) {
+                        clearInterval(window.analysisPollingIntervals[brandId]);
+                    }
+                    
+                    // 启动新的轮询
+                    window.analysisPollingIntervals[brandId] = setInterval(async () => {
+                        try {
+                            const pollResponse = await fetch(`/api/v1/brands/${brandId}/analysis?include_charts=true`);
+                            const pollData = await pollResponse.json();
+                            
+                            if (pollData.code === 202) {
+                                // 任务仍在进行中，更新进度
+                                const newProgress = pollData.data.progress || 0;
+                                const progressBar = document.getElementById(progressBarId);
+                                const progressText = document.getElementById(progressTextId);
+                                
+                                if (progressBar && progressText) {
+                                    progressBar.style.width = `${newProgress}%`;
+                                    progressText.textContent = `进度: ${newProgress}%`;
+                                }
+                            } else if (pollData.code === 200) {
+                                // 任务完成，重新加载完整结果
+                                clearInterval(window.analysisPollingIntervals[brandId]);
+                                delete window.analysisPollingIntervals[brandId];
+                                await loadBrandAnalysis(brandId, container);
+                            } else if (pollData.code === 404 || pollData.code === 500) {
+                                // 任务失败或出错，停止轮询
+                                clearInterval(window.analysisPollingIntervals[brandId]);
+                                delete window.analysisPollingIntervals[brandId];
+                                await loadBrandAnalysis(brandId, container);
+                            }
+                        } catch (error) {
+                            console.error('轮询更新进度失败:', error);
+                            // 出错时继续轮询，不中断
+                        }
+                    }, 3000); // 每3秒轮询一次
+                    
+                    return;
+                }
+                
+                if (data.code === 500) {
+                    // 服务器错误
+                    throw new Error(data.data?.message || data.data?.error || '服务器错误，请稍后重试');
+                }
+                
+                if (data.code !== 200) {
+                    throw new Error(data.message || data.data?.error || data.data?.message || '获取分析结果失败');
+                }
+                
+                if (!data.data) {
+                    throw new Error('分析结果数据为空');
+                }
+                
+                // 检查是否有错误信息
+                if (data.data.error) {
+                    throw new Error(data.data.error);
+                }
+                
+                // 检查是否有分析结果
+                if (data.data.message && data.data.message === '分析结果未找到') {
+                    container.innerHTML = `
+                        <div class="empty">
+                            <h3>暂无分析结果</h3>
+                            <p>该品牌还没有完成分析任务，请先启动分析。</p>
+                            <p style="margin-top: 20px;">
+                                <a href="/api/v1/brands/${brandId}" style="color: #667eea; text-decoration: none;">查看品牌详情</a> | 
+                                <a href="/api/v1/data-analysis" style="color: #667eea; text-decoration: none;">返回数据分析</a>
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const analysisData = data.data;
+                const result = analysisData.result || {};
+                const charts = analysisData.charts || {};
+                
+                let html = '';
+                
+                // 报告摘要
+                html += `
+                    <div class="section">
+                        <h2>📊 报告摘要</h2>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${result.text_statistics?.total_count || 0}</div>
+                                <div class="stat-label">总文本数</div>
+                            </div>
+                `;
+                
+                if (result.sentiment && result.sentiment.distribution) {
+                    html += `
+                            <div class="stat-card" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white;">
+                                <div class="stat-value">${result.sentiment.distribution.positive.toFixed(1)}%</div>
+                                <div class="stat-label">正面情感</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #F44336 0%, #d32f2f 100%); color: white;">
+                                <div class="stat-value">${result.sentiment.distribution.negative.toFixed(1)}%</div>
+                                <div class="stat-label">负面情感</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #FFC107 0%, #ffb300 100%); color: white;">
+                                <div class="stat-value">${result.sentiment.distribution.neutral.toFixed(1)}%</div>
+                                <div class="stat-label">中性情感</div>
+                            </div>
+                    `;
+                }
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+                
+                // 情感分析图表
+                if (charts.sentiment_pie) {
+                    html += `
+                        <div class="section">
+                            <h2>💭 情感分析分布</h2>
+                            <div style="text-align: center; margin: 20px 0;">
+                                <img src="data:image/png;base64,${charts.sentiment_pie}" style="max-width: 100%; height: auto; border-radius: 8px;" alt="情感分布图">
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 平台对比图
+                if (charts.sentiment_by_platform) {
+                    html += `
+                        <div class="section">
+                            <h2>📱 各平台情感对比</h2>
+                            <div style="text-align: center; margin: 20px 0;">
+                                <img src="data:image/png;base64,${charts.sentiment_by_platform}" style="max-width: 100%; height: auto; border-radius: 8px;" alt="平台对比图">
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 趋势图
+                if (charts.sentiment_trend) {
+                    html += `
+                        <div class="section">
+                            <h2>📈 情感趋势分析</h2>
+                            <div style="text-align: center; margin: 20px 0;">
+                                <img src="data:image/png;base64,${charts.sentiment_trend}" style="max-width: 100%; height: auto; border-radius: 8px;" alt="趋势图">
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 关键词
+                if (result.keywords && result.keywords.length > 0) {
+                    html += `
+                        <div class="section">
+                            <h2>🔑 关键词分析</h2>
+                    `;
+                    if (charts.keywords_bar) {
+                        html += `
+                            <div style="text-align: center; margin: 20px 0;">
+                                <img src="data:image/png;base64,${charts.keywords_bar}" style="max-width: 100%; height: auto; border-radius: 8px;" alt="关键词图">
+                            </div>
+                        `;
+                    }
+                    html += `
+                            <div class="keyword-list">
+                    `;
+                    result.keywords.slice(0, 30).forEach(kw => {
+                        html += `
+                            <div class="keyword-item">
+                                ${kw.keyword}
+                                <span class="keyword-weight">(${kw.weight.toFixed(4)})</span>
+                            </div>
+                        `;
+                    });
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 主题分析
+                if (result.topics && result.topics.length > 0) {
+                    html += `
+                        <div class="section">
+                            <h2>📌 主题分析</h2>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    `;
+                    result.topics.forEach(topic => {
+                        html += `
+                            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <h3 style="color: #667eea; margin-bottom: 10px;">${topic.topic}</h3>
+                                <p style="color: #666; font-size: 12px; margin-bottom: 8px;">权重: ${topic.weight.toFixed(4)} | 样本数: ${topic.sample_count}</p>
+                                <p style="color: #999; font-size: 11px;">关键词: ${topic.keywords.join(', ')}</p>
+                            </div>
+                        `;
+                    });
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // AI深度洞察
+                if (result.llm_insights && result.llm_insights.insights) {
+                    html += `
+                        <div class="section">
+                            <h2>🤖 AI深度洞察</h2>
+                            <div class="insights">${result.llm_insights.insights}</div>
+                            ${result.llm_insights.model ? `<p style="margin-top: 10px; color: #666; font-size: 12px;">使用模型: ${result.llm_insights.model}</p>` : ''}
+                        </div>
+                    `;
+                }
+                
+                // 平台统计
+                if (result.platform_statistics) {
+                    html += `
+                        <div class="section">
+                            <h2>📱 平台数据分布</h2>
+                    `;
+                    if (charts.platform_distribution) {
+                        html += `
+                            <div style="text-align: center; margin: 20px 0;">
+                                <img src="data:image/png;base64,${charts.platform_distribution}" style="max-width: 100%; height: auto; border-radius: 8px;" alt="平台分布图">
+                            </div>
+                        `;
+                    }
+                    html += `
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                    `;
+                    const platformNames = {
+                        'xhs': '小红书',
+                        'douyin': '抖音',
+                        'weibo': '微博',
+                        'zhihu': '知乎',
+                        'bilibili': 'B站'
+                    };
+                    for (const [platform, stats] of Object.entries(result.platform_statistics)) {
+                        html += `
+                            <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <h3 style="color: #667eea; margin-bottom: 10px;">${platformNames[platform] || platform}</h3>
+                                <p style="color: #666; font-size: 14px;">文本数: ${stats.total_texts}</p>
+                                <p style="color: #666; font-size: 14px;">字符数: ${stats.total_chars}</p>
+                            </div>
+                        `;
+                    }
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 操作按钮
+                html += `
+                    <div class="section" style="text-align: center; padding: 20px;">
+                        <a href="/api/v1/brands/${brandId}/analysis/view" style="display: inline-block; padding: 12px 24px; margin: 0 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            查看完整报告
+                        </a>
+                        <a href="/api/v1/brands/${brandId}/reports?format=pdf" style="display: inline-block; padding: 12px 24px; margin: 0 10px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            下载PDF报告
+                        </a>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                
+                // 更新标题
+                if (analysisData.brand_name) {
+                    document.querySelector('h1').textContent = `${analysisData.brand_name} - 分析结果`;
+                }
+                
+            } catch (error) {
+                console.error('加载品牌分析失败:', error);
+                console.error('错误堆栈:', error.stack);
+                let errorMessage = error.message || '未知错误';
+                
+                // 如果是"暂无分析结果"或"该品牌还没有完成分析任务"，显示启动分析界面
+                if (errorMessage.includes('暂无分析结果') || 
+                    errorMessage.includes('该品牌还没有完成分析任务') ||
+                    errorMessage.includes('还没有完成分析任务')) {
+                    const brandName = '该品牌';
+                    container.innerHTML = `
+                        <div class="empty">
+                            <h3>📊 暂无分析结果</h3>
+                            <p style="font-size: 16px; margin: 15px 0;">${brandName}还没有完成分析任务，请先启动分析</p>
+                            <div style="margin-top: 30px; padding: 20px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                                <h4 style="margin-bottom: 15px; color: #333;">开始分析</h4>
+                                <p style="margin-bottom: 15px; color: #666;">点击下方按钮启动分析任务，系统将自动：</p>
+                                <ul style="text-align: left; display: inline-block; color: #666; margin-bottom: 20px;">
+                                    <li>从数据库读取品牌相关数据</li>
+                                    <li>进行情感分析、关键词提取、主题分析</li>
+                                    <li>使用AI生成深度洞察</li>
+                                    <li>生成可视化图表</li>
+                                </ul>
+                                <button onclick="startAnalysis(${brandId})" id="startAnalysisBtn" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 500; cursor: pointer; transition: transform 0.2s;">
+                                    启动分析任务
+                                </button>
+                                <div id="analysisStatus" style="margin-top: 15px; display: none;"></div>
+                            </div>
+                            <div style="margin-top: 20px;">
+                                <a href="/api/v1/brands/${brandId}" style="color: #667eea; text-decoration: none; margin: 0 10px;">查看品牌详情</a>
+                                <a href="/api/v1/data-analysis" style="color: #667eea; text-decoration: none; margin: 0 10px;">返回数据分析</a>
+                                <a href="/api/v1/brands" style="color: #667eea; text-decoration: none; margin: 0 10px;">品牌列表</a>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 根据错误类型显示不同的提示
+                if (errorMessage.includes('404') || errorMessage.includes('品牌不存在')) {
+                    errorMessage = '品牌不存在，请检查品牌ID是否正确';
+                } else if (errorMessage.includes('无效的品牌ID')) {
+                    errorMessage = '品牌ID格式不正确';
+                }
+                
+                container.innerHTML = `
+                    <div class="empty">
+                        <h3>❌ 加载失败</h3>
+                        <p style="color: #f44336; margin: 10px 0;">${errorMessage}</p>
+                        <div style="margin-top: 20px;">
+                            <p>可能的原因：</p>
+                            <ul style="text-align: left; display: inline-block; margin-top: 10px;">
+                                <li>品牌ID不存在或无效</li>
+                                <li>该品牌还没有完成分析任务</li>
+                                <li>分析任务还在进行中</li>
+                                <li>服务器连接问题</li>
+                            </ul>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button onclick="startAnalysis(${brandId})" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 0 10px;">
+                                尝试启动分析任务
+                            </button>
+                            <a href="/api/v1/brands" style="color: #667eea; text-decoration: none; margin: 0 10px;">查看品牌列表</a>
+                            <a href="/api/v1/data-analysis" style="color: #667eea; text-decoration: none; margin: 0 10px;">返回数据分析</a>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // 启动分析任务
+        async function startAnalysis(brandId) {
+            const btn = document.getElementById('startAnalysisBtn');
+            const statusDiv = document.getElementById('analysisStatus');
+            
+            if (!btn || !statusDiv) return;
+            
+            btn.disabled = true;
+            btn.textContent = '正在启动...';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p style="color: #667eea;">正在创建分析任务...</p>';
+            
+            try {
+                const response = await fetch(`/api/v1/brands/${brandId}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        analysis_type: 'full',
+                        include_sentiment: true,
+                        include_topics: true,
+                        include_keywords: true,
+                        include_insights: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.code === 200 && data.data) {
+                    statusDiv.innerHTML = `
+                        <div style="padding: 15px; background: #e8f5e9; border-radius: 6px; border-left: 4px solid #4CAF50;">
+                            <p style="color: #2e7d32; font-weight: 500;">✅ 分析任务已启动！</p>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">任务ID: ${data.data.task_id}</p>
+                            <p style="color: #666; font-size: 14px; margin-top: 10px;">分析任务正在后台处理，请稍候...</p>
+                            <p style="color: #666; font-size: 12px; margin-top: 10px;">页面将在5秒后自动刷新</p>
+                        </div>
+                    `;
+                    
+                    // 5秒后刷新页面
+                    setTimeout(() => {
+                        location.reload();
+                    }, 5000);
+                } else {
+                    throw new Error(data.message || '启动分析任务失败');
+                }
+            } catch (error) {
+                console.error('启动分析失败:', error);
+                statusDiv.innerHTML = `
+                    <div style="padding: 15px; background: #ffebee; border-radius: 6px; border-left: 4px solid #f44336;">
+                        <p style="color: #c62828; font-weight: 500;">❌ 启动失败</p>
+                        <p style="color: #666; font-size: 14px; margin-top: 5px;">${error.message}</p>
+                    </div>
+                `;
+                btn.disabled = false;
+                btn.textContent = '重试';
+            }
+        }
+        
+        // 页面卸载时清理所有轮询定时器
+        window.addEventListener('beforeunload', () => {
+            if (window.analysisPollingIntervals) {
+                for (const brandId in window.analysisPollingIntervals) {
+                    clearInterval(window.analysisPollingIntervals[brandId]);
+                }
+                window.analysisPollingIntervals = {};
+            }
+        });
         
         // 页面加载时获取结果
         loadResults();

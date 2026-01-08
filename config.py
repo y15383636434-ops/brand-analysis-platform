@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     PROJECT_VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
     
+    # 路径配置
+    BASE_DIR: Path = Path(__file__).resolve().parent
+    
     # 服务器配置
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -42,15 +45,23 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     
-    # AI配置
+    # AI配置 - LLM聚合网关（优先使用）
+    # 基于 OneAPI/NewAPI 的统一LLM接口网关
+    # 支持动态切换 GPT-4o, Claude 3.5, Gemini 等多种模型
+    LLM_API_BASE: Optional[str] = None  # LLM聚合网关地址，例如: https://xy.xiaoxu030.xyz:8888/v1
+    LLM_API_KEY: Optional[str] = None   # 聚合服务的分发令牌（通常以 sk- 开头）
+    LLM_MODEL_NAME: Optional[str] = None  # 默认使用的模型名称，例如: gpt-4o-mini
+    
+    # OpenAI配置（直接调用，可选）
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_BASE_URL: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4"
     
+    # Anthropic配置（直接调用，可选）
     ANTHROPIC_API_KEY: Optional[str] = None
     ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
     
-    # Google Gemini配置
+    # Google Gemini配置（直接调用，可选）
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.0-flash-exp"
     
@@ -59,13 +70,13 @@ class Settings(BaseSettings):
     LOCAL_LLM_MODEL: Optional[str] = None
     
     # 文件存储
-    UPLOAD_DIR: Path = Path("uploads")
-    REPORT_DIR: Path = Path("reports")
-    DATA_DIR: Path = Path("data")
+    UPLOAD_DIR: Path = Path("uploads") if Path("uploads").is_absolute() else Path(__file__).resolve().parent / "uploads"
+    REPORT_DIR: Path = Path("reports") if Path("reports").is_absolute() else Path(__file__).resolve().parent / "reports"
+    DATA_DIR: Path = Path("data") if Path("data").is_absolute() else Path(__file__).resolve().parent / "data"
     
     # 日志配置
     LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = "logs/app.log"
+    LOG_FILE: str = str(Path(__file__).resolve().parent / "logs" / "app.log")
     
     # 安全配置
     SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -92,8 +103,8 @@ class Settings(BaseSettings):
     ANALYSIS_INSIGHTS_ENABLED: bool = True
     
     # 报告配置
-    REPORT_TEMPLATE_DIR: Path = Path("templates/reports")
-    REPORT_OUTPUT_DIR: Path = Path("reports")
+    REPORT_TEMPLATE_DIR: Path = Path("templates/reports") if Path("templates/reports").is_absolute() else Path(__file__).resolve().parent / "templates" / "reports"
+    REPORT_OUTPUT_DIR: Path = Path("reports") if Path("reports").is_absolute() else Path(__file__).resolve().parent / "reports"
     REPORT_DEFAULT_FORMAT: str = "pdf"
     
     class Config:

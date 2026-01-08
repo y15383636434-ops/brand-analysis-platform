@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>品牌分析报告</title>
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            background: var(--card-bg);
+            padding: 20px 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .brand-info h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .brand-info .meta {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-outline {
+            background-color: white;
+            border-color: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background-color: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        /* Loading & Error */
+        .state-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e2e8f0;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Summary Stats (Full Width) */
+        .summary-stats {
+            grid-column: span 12;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-trend {
+            font-size: 12px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* AI Insight (Grid Layout) */
+        .ai-insight-container {
+            grid-column: span 12;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .ai-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .ai-card.full-width {
+            grid-column: span 2;
+        }
+
+        .ai-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .ai-icon {
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .ai-content ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+        
+        .ai-content li {
+            margin-bottom: 8px;
+            color: #334155;
+            font-size: 14px;
+        }
+
+        .ai-summary-text {
+            color: #334155;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* Charts */
+        .chart-section {
+            height: 400px;
+        }
+
+        .col-span-8 { grid-column: span 8; }
+        .col-span-4 { grid-column: span 4; }
+        .col-span-6 { grid-column: span 6; }
+        .col-span-12 { grid-column: span 12; }
+
+        @media (max-width: 1024px) {
+            .col-span-8, .col-span-4, .col-span-6, .ai-insight-container, .ai-card.full-width { 
+                grid-column: span 12 !important; 
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Top Posts Table */
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table th {
+            font-weight: 600;
+            color: var(--text-secondary);
+            background-color: #f8fafc;
+            white-space: nowrap;
+        }
+
+        .data-table tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .post-title {
+            color: var(--text-main);
+            font-weight: 500;
+            text-decoration: none;
+            display: block;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .post-title:hover {
+            color: var(--primary-color);
+        }
+        
+        .platform-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .platform-xhs { background-color: #ff2442; }
+        .platform-douyin { background-color: #000000; }
+        .platform-weibo { background-color: #e6162d; }
+        .platform-zhihu { background-color: #0084ff; }
+        .platform-bilibili { background-color: #00a1d6; }
+        .platform-other { background-color: #94a3b8; }
+
+        .sentiment-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .sentiment-positive { background-color: #dcfce7; color: #166534; }
+        .sentiment-negative { background-color: #fee2e2; color: #991b1b; }
+        .sentiment-neutral { background-color: #f1f5f9; color: #475569; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-info">
+                <h1 id="brandName">品牌分析报告</h1>
+                <div class="meta" id="metaInfo">加载中...</div>
+            </div>
+            <div class="actions" id="actions" style="display: none;">
+                <a href="javascript:history.back()" class="btn btn-outline">返回上一页</a>
+                <!-- 预留导出功能 -->
+                <!-- <a href="#" class="btn btn-primary">导出报告</a> -->
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="state-container">
+            <div class="loading-spinner"></div>
+            <p>正在生成深度分析报告...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="state-container" style="display: none;">
+            <div style="font-size: 48px; margin-bottom: 16px;">😕</div>
+            <h3 style="margin-bottom: 8px;">加载失败</h3>
+            <p id="errorMsg" style="color: var(--text-secondary);">无法获取数据</p>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboard" class="dashboard-grid" style="display: none;">
+            
+            <!-- 1. Key Metrics -->
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <div class="stat-label">总声量 (Total Posts)</div>
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-trend">全网数据采集</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">正面情感占比</div>
+                    <div class="stat-value" style="color: var(--success);" id="statPositive">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">负面情感占比</div>
+                    <div class="stat-value" style="color: var(--danger);" id="statNegative">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">平均情感得分</div>
+                    <div class="stat-value" id="statScore">0.0</div>
+                    <div class="stat-trend">范围 0 ~ 1</div>
+                </div>
+            </div>
+
+            <!-- 2. AI Insight (Structured) -->
+            <div class="ai-insight-container">
+                <div class="ai-card full-width" style="background: linear-gradient(to right, #f0f9ff, #e0f2fe); border-color: #bae6fd;">
+                    <div class="ai-card-header" style="color: #0369a1;">
+                        <span class="ai-icon">🤖</span> 总体评价与分析
+                    </div>
+                    <div class="ai-content ai-summary-text" id="aiSummary">正在分析...</div>
+                </div>
+                
+                <div class="ai-card">
+                    <div class="ai-card-header" style="color: #b91c1c;">
+                        <span class="ai-icon">⚡</span> 用户主要痛点
+                    </div>
+                    <div class="ai-content" id="aiPainPoints">
+                        <ul><li>暂无数据</li></ul>
+                    </div>
+                </div>
+                
+                <div class="ai-card">
+                    <div class="ai-card-header" style="color: #15803d;">
+                        <span class="ai-icon">💡</span> 营销建议
+                    </div>
+                    <div class="ai-content" id="aiSuggestions">
+                         <ul><li>暂无数据</li></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Charts Row 1 -->
+            <div class="card col-span-4 chart-section">
+                <div class="card-header">
+                    <div class="card-title">情感分布</div>
+                </div>
+                <div id="chartSentiment" style="width: 100%; height: 320px;"></div>
+            </div>
+
+            <div class="card col-span-8 chart-section">
+                <div class="card-header">
+                    <div class="card-title">情感趋势走势</div>
+                </div>
+                <div id="chartTrend" style="width: 100%; height: 320px;"></div>
+            </div>
+
+            <!-- 4. Top Posts (Table) -->
+            <div class="card col-span-12">
+                <div class="card-header">
+                    <div class="card-title">🔥 热门内容溯源 (Top 20)</div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>内容标题</th>
+                                <th>平台</th>
+                                <th>互动指数</th>
+                                <th>点赞数</th>
+                                <th>评论数</th>
+                                <th>情感倾向</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topPostsTableBody">
+                            <!-- JS 渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 5. Charts Row 2 -->
+            <div class="card col-span-6 chart-section">
+                <div class="card-header">
+                    <div class="card-title">平台声量分布</div>
+                </div>
+                <div id="chartPlatform" style="width: 100%; height: 320px;"></div>
+            </div>
+
+            <div class="card col-span-6 chart-section">
+                <div class="card-header">
+                    <div class="card-title">核心关键词权重</div>
+                </div>
+                <div id="chartKeywords" style="width: 100%; height: 320px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取 URL 参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const brandId = urlParams.get('brand_id') || urlParams.get('id');
+
+        if (!brandId) {
+            showError('未找到品牌 ID');
+        } else {
+            loadData();
+        }
+
+        function showError(msg) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'flex';
+            document.getElementById('errorMsg').textContent = msg;
+        }
+
+        async function loadData() {
+            try {
+                // 请求数据
+                const response = await fetch(`/api/v1/brands/${brandId}/analysis?include_charts=false`);
+                const res = await response.json();
+
+                if (res.code !== 200 && res.code !== 202) {
+                    throw new Error(res.message || '获取数据失败');
+                }
+                
+                // 处理进行中的状态
+                if (res.code === 202) {
+                    document.getElementById('loading').innerHTML = `
+                        <div class="loading-spinner"></div>
+                        <p>分析任务进行中...当前进度 ${res.data.progress}%</p>
+                        <p style="font-size: 12px; color: #666; margin-top: 8px;">请稍候，页面会自动刷新</p>
+                    `;
+                    setTimeout(loadData, 3000); // 3秒后轮询
+                    return;
+                }
+
+                const data = res.data;
+                const result = data.result || {};
+                
+                // 渲染页面
+                renderHeader(data);
+                renderSummary(result);
+                renderAIInsight(result);
+                renderTopPosts(result.top_posts || []);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+                document.getElementById('actions').style.display = 'flex';
+
+                // 初始化图表
+                setTimeout(() => {
+                    initCharts(result);
+                }, 100);
+
+            } catch (error) {
+                console.error(error);
+                showError(error.message);
+            }
+        }
+
+        function renderHeader(data) {
+            document.getElementById('brandName').textContent = `${data.brand_name} 深度分析报告`;
+            document.getElementById('metaInfo').textContent = `生成时间: ${data.generated_at || '刚刚'}`;
+        }
+
+        function renderSummary(result) {
+            const stats = result.text_statistics || {};
+            const sentiment = result.sentiment || {};
+            
+            document.getElementById('statTotal').textContent = (stats.total_count || 0).toLocaleString();
+            
+            if (sentiment.distribution) {
+                document.getElementById('statPositive').textContent = sentiment.distribution.positive.toFixed(1) + '%';
+                document.getElementById('statNegative').textContent = sentiment.distribution.negative.toFixed(1) + '%';
+            }
+            
+            document.getElementById('statScore').textContent = (sentiment.avg_score || 0).toFixed(2);
+        }
+
+        function renderAIInsight(result) {
+            const insights = result.llm_insights || {};
+            let content = insights.insights || {};
+            
+            // 兼容旧版非结构化数据
+            if (typeof content === 'string') {
+                document.getElementById('aiSummary').textContent = content;
+                document.getElementById('aiPainPoints').innerHTML = '<p style="color:#999">数据格式旧，无法拆分显示</p>';
+                document.getElementById('aiSuggestions').innerHTML = '<p style="color:#999">数据格式旧，无法拆分显示</p>';
+                return;
+            }
+
+            // 渲染结构化数据
+            document.getElementById('aiSummary').textContent = content.summary || '暂无总体评价';
+            
+            renderList('aiPainPoints', content.pain_points);
+            renderList('aiSuggestions', content.marketing_suggestions || content.suggestions);
+        }
+
+        function renderList(elementId, items) {
+            const container = document.getElementById(elementId);
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p style="color:#999; font-size: 14px;">暂无相关内容</p>';
+                return;
+            }
+            
+            const ul = document.createElement('ul');
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                ul.appendChild(li);
+            });
+            container.innerHTML = '';
+            container.appendChild(ul);
+        }
+
+        function renderTopPosts(posts) {
+            const tbody = document.getElementById('topPostsTableBody');
+            tbody.innerHTML = '';
+            
+            if (!posts || posts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">暂无热门内容数据</td></tr>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const tr = document.createElement('tr');
+                
+                // 情感徽章
+                let sentimentClass = 'sentiment-neutral';
+                let sentimentText = '中性';
+                if (post.sentiment) {
+                    if (post.sentiment.sentiment === 'positive') { sentimentClass = 'sentiment-positive'; sentimentText = '正面'; }
+                    else if (post.sentiment.sentiment === 'negative') { sentimentClass = 'sentiment-negative'; sentimentText = '负面'; }
+                }
+
+                // 平台徽章
+                const platformMap = {
+                    'xhs': { name: '小红书', cls: 'platform-xhs' },
+                    'douyin': { name: '抖音', cls: 'platform-douyin' },
+                    'weibo': { name: '微博', cls: 'platform-weibo' },
+                    'zhihu': { name: '知乎', cls: 'platform-zhihu' },
+                    'bilibili': { name: 'B站', cls: 'platform-bilibili' }
+                };
+                const pInfo = platformMap[post.platform] || { name: post.platform, cls: 'platform-other' };
+
+                tr.innerHTML = `
+                    <td>
+                        <a href="${post.url || '#'}" target="_blank" class="post-title" title="${post.title || post.content}">
+                            ${post.title || '无标题'}
+                        </a>
+                    </td>
+                    <td><span class="platform-tag ${pInfo.cls}">${pInfo.name}</span></td>
+                    <td><span style="font-weight:bold; color:#f59e0b;">${post.score || 0}</span></td>
+                    <td>${(post.likes || 0).toLocaleString()}</td>
+                    <td>${(post.comments_count || 0).toLocaleString()}</td>
+                    <td><span class="sentiment-badge ${sentimentClass}">${sentimentText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function initCharts(result) {
+            // ECharts 配置与之前相同，略微优化样式
+            const sentiment = result.sentiment || {};
+            if (sentiment.distribution) {
+                const chart = echarts.init(document.getElementById('chartSentiment'));
+                chart.setOption({
+                    tooltip: { trigger: 'item' },
+                    legend: { bottom: '0%' },
+                    color: ['#10b981', '#ef4444', '#f59e0b'],
+                    series: [{
+                        type: 'pie',
+                        radius: ['45%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: false, position: 'center' },
+                        emphasis: { label: { show: true, fontSize: 18, fontWeight: 'bold' } },
+                        data: [
+                            { value: sentiment.distribution.positive, name: '正面' },
+                            { value: sentiment.distribution.negative, name: '负面' },
+                            { value: sentiment.distribution.neutral, name: '中性' }
+                        ]
+                    }]
+                });
+            }
+
+            // 情感趋势
+            const timeData = sentiment.by_time?.distribution || [];
+            if (timeData.length > 0) {
+                const chart = echarts.init(document.getElementById('chartTrend'));
+                chart.setOption({
+                    tooltip: { trigger: 'axis' },
+                    legend: { bottom: 0 },
+                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+                    xAxis: { type: 'category', boundaryGap: false, data: timeData.map(i => i.date) },
+                    yAxis: { type: 'value' },
+                    color: ['#10b981', '#ef4444', '#f59e0b'],
+                    series: [
+                        { name: '正面', type: 'line', smooth: true, showSymbol: false, data: timeData.map(i => i.positive) },
+                        { name: '负面', type: 'line', smooth: true, showSymbol: false, data: timeData.map(i => i.negative) },
+                        { name: '中性', type: 'line', smooth: true, showSymbol: false, data: timeData.map(i => i.neutral) }
+                    ]
+                });
+            }
+
+            // 平台分布
+            const platforms = result.platform_statistics || {};
+            const platformData = Object.keys(platforms).map(key => ({
+                name: formatPlatform(key),
+                value: platforms[key].total_texts
+            }));
+            
+            if (platformData.length > 0) {
+                const chart = echarts.init(document.getElementById('chartPlatform'));
+                chart.setOption({
+                    tooltip: { trigger: 'item' },
+                    legend: { bottom: 0 },
+                    series: [{
+                        type: 'pie',
+                        radius: '60%',
+                        data: platformData,
+                        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 }
+                    }]
+                });
+            }
+
+            // 关键词
+            const keywords = result.keywords || [];
+            if (keywords.length > 0) {
+                const topKeywords = keywords.slice(0, 10).reverse();
+                const chart = echarts.init(document.getElementById('chartKeywords'));
+                chart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'value' },
+                    yAxis: { type: 'category', data: topKeywords.map(k => k.keyword) },
+                    series: [{
+                        type: 'bar',
+                        data: topKeywords.map(k => k.weight),
+                        itemStyle: { color: '#3b82f6', borderRadius: [0, 4, 4, 0] },
+                        barWidth: '60%'
+                    }]
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                echarts.getInstanceByDom(document.getElementById('chartSentiment'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartTrend'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartPlatform'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartKeywords'))?.resize();
+            });
+        }
+
+        function formatPlatform(key) {
+            const map = { 'xhs': '小红书', 'douyin': '抖音', 'weibo': '微博', 'zhihu': '知乎', 'bilibili': 'B站' };
+            return map[key] || key;
+        }
+    </script>
+</body>
+</html>

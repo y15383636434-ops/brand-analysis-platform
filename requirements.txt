@@ -9,6 +9,7 @@ pymysql
 pymongo
 redis
 alembic
+aiomysql
 
 # 异步任务
 celery

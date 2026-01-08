@@ -4,29 +4,56 @@
 from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from pymongo import MongoClient
 from redis import Redis
 from loguru import logger
 
 from config import settings
 
-# MySQL数据库
+# MySQL数据库 (同步 - 用于Celery和旧代码)
 SQLALCHEMY_DATABASE_URL = (
     f"mysql+pymysql://{settings.MYSQL_USER}:{settings.MYSQL_PASSWORD}"
     f"@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
     f"?charset=utf8mb4"
 )
 
+# 使用 QueuePool 替代 NullPool 以提高性能，除非有明确理由不用
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    poolclass=NullPool,
+    poolclass=QueuePool,
+    pool_size=5,
+    max_overflow=10,
     pool_pre_ping=True,
     echo=settings.DEBUG
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+# MySQL数据库 (异步 - 用于FastAPI接口)
+SQLALCHEMY_ASYNC_DATABASE_URL = (
+    f"mysql+aiomysql://{settings.MYSQL_USER}:{settings.MYSQL_PASSWORD}"
+    f"@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}/{settings.MYSQL_DATABASE}"
+    f"?charset=utf8mb4"
+)
+
+async_engine = create_async_engine(
+    SQLALCHEMY_ASYNC_DATABASE_URL,
+    pool_pre_ping=True,
+    echo=settings.DEBUG,
+    pool_size=20,     # 增加异步池大小
+    max_overflow=20
+)
+
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False
+)
 
 # MongoDB数据库（可选，连接失败不影响应用启动）
 mongo_client = None
@@ -60,15 +87,24 @@ except Exception as e:
 
 async def init_db():
     """初始化数据库"""
-    # 测试MySQL连接（必需）
+    # 测试MySQL同步连接
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        logger.info("MySQL连接成功")
+        logger.info("MySQL同步连接成功")
     except Exception as e:
-        logger.error(f"MySQL连接失败（必需服务）: {e}")
-        raise  # MySQL是必需的，连接失败要抛出异常
-    
+        logger.error(f"MySQL同步连接失败（必需服务）: {e}")
+        raise
+
+    # 测试MySQL异步连接
+    try:
+        async with async_engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("MySQL异步连接成功")
+    except Exception as e:
+        logger.error(f"MySQL异步连接失败: {e}")
+        # 异步连接失败暂时不阻断启动，因为可能只是配置问题
+
     # 测试MongoDB连接（可选）
     if mongo_client:
         try:
@@ -89,27 +125,32 @@ async def init_db():
     else:
         logger.warning("Redis未配置或连接失败，Celery任务功能可能不可用")
     
-    # 创建表（如果不存在）
-    # 注意：由于MySQL权限问题，表创建可能失败，但不影响应用启动
+    # 创建表（同步方式）
     try:
         from app.models import brand, crawl_task, analysis_task, report
         Base.metadata.create_all(bind=engine)
         logger.info("数据库表创建完成")
     except Exception as e:
-        # 表创建失败可能是权限问题或表已存在，记录警告但不阻止启动
         logger.warning(f"自动创建数据库表失败: {e}")
-        logger.warning("这可能是MySQL权限问题。如果表已存在，可以忽略此警告。")
-        logger.warning("如果表不存在，请参考文档手动创建表，或联系数据库管理员修复权限。")
-        # 不抛出异常，允许应用继续启动
+        logger.warning("如果表已存在，可以忽略此警告。")
 
 
 def get_db():
-    """获取数据库会话"""
+    """获取同步数据库会话 (Deprecated: 请尽量使用 get_async_db)"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+async def get_async_db():
+    """获取异步数据库会话"""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 def get_mongodb():
@@ -124,4 +165,3 @@ def get_redis():
     if redis_client is None:
         raise RuntimeError("Redis未连接，请启动Redis服务")
     return redis_client
-

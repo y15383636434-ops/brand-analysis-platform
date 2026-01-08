@@ -51,24 +51,65 @@ class DataProcessor:
     
     def extract_text_from_item(self, item: Dict[str, Any], platform: str) -> Dict[str, Any]:
         """
-        从数据项中提取文本信息
+        从数据项中提取文本信息和互动数据
         
         Args:
             item: 原始数据项
             platform: 平台代码
             
         Returns:
-            提取的文本信息
+            提取的信息
         """
         text_info = {
             "content": "",
             "title": "",
             "author": "",
             "comments": [],
-            "platform": platform
+            "platform": platform,
+            "url": "",
+            "likes": 0,
+            "comments_count": 0,
+            "shares": 0,
+            "date": ""
         }
         
-        # 根据平台提取数据
+        # 通用字段提取
+        text_info["url"] = item.get("detail_url", "") or item.get("url", "")
+        
+        # 尝试提取互动数据（不同平台字段可能不同，这里做尽力尝试）
+        # 点赞数
+        for key in ["liked_count", "digg_count", "likes", "like_count"]:
+            if key in item:
+                try:
+                    text_info["likes"] = int(item[key])
+                    break
+                except:
+                    pass
+                    
+        # 评论数
+        for key in ["comment_count", "comments_count"]:
+            if key in item:
+                try:
+                    text_info["comments_count"] = int(item[key])
+                    break
+                except:
+                    pass
+
+        # 分享/收藏数
+        for key in ["share_count", "collected_count", "collect_count"]:
+            if key in item:
+                try:
+                    text_info["shares"] += int(item[key])
+                except:
+                    pass
+        
+        # 日期提取
+        for key in ["create_time", "publish_time", "created_at", "date"]:
+            if key in item:
+                text_info["date"] = str(item[key])
+                break
+
+        # 根据平台提取特定文本数据
         if platform == "xhs":
             # 小红书格式
             text_info["content"] = item.get("note_desc", "") or item.get("desc", "") or item.get("content", "")
@@ -163,7 +204,7 @@ class DataProcessor:
         include_comments: bool = True
     ) -> Dict[str, Any]:
         """
-        处理JSON文件，提取所有文本数据
+        处理JSON文件，提取所有数据
         
         Args:
             file_path: JSON文件路径
@@ -182,12 +223,14 @@ class DataProcessor:
                 "platform": platform,
                 "total_items": 0,
                 "texts": [],
-                "comments": []
+                "comments": [],
+                "raw_items": []
             }
         
         # 提取文本
         all_texts = []
         all_comments = []
+        processed_items = []
         
         for item in items:
             text_info = self.extract_text_from_item(item, platform)
@@ -201,19 +244,22 @@ class DataProcessor:
             # 添加评论
             if include_comments and text_info["comments"]:
                 all_comments.extend(text_info["comments"])
+                
+            processed_items.append(text_info)
         
         # 去重
-        all_texts = list(set(all_texts))
-        all_comments = list(set(all_comments))
+        unique_texts = list(set(all_texts))
+        unique_comments = list(set(all_comments))
         
-        logger.info(f"处理完成: {len(items)}条数据, {len(all_texts)}条文本, {len(all_comments)}条评论")
+        logger.info(f"处理完成: {len(items)}条数据, {len(unique_texts)}条文本, {len(unique_comments)}条评论")
         
         return {
             "platform": platform,
             "total_items": len(items),
-            "texts": all_texts,
-            "comments": all_comments,
-            "all_texts": all_texts + all_comments if include_comments else all_texts,
+            "texts": unique_texts,
+            "comments": unique_comments,
+            "all_texts": unique_texts + unique_comments if include_comments else unique_texts,
+            "raw_items": processed_items,
             "file_path": str(file_path),
             "processed_at": datetime.now().isoformat()
         }
@@ -237,24 +283,27 @@ class DataProcessor:
         """
         all_texts = []
         all_comments = []
+        all_raw_items = []
         total_items = 0
         
         for file_path in file_paths:
             result = self.process_json_file(file_path, platform, include_comments)
             all_texts.extend(result["texts"])
             all_comments.extend(result["comments"])
+            all_raw_items.extend(result.get("raw_items", []))
             total_items += result["total_items"]
         
         # 去重
-        all_texts = list(set(all_texts))
-        all_comments = list(set(all_comments))
+        unique_texts = list(set(all_texts))
+        unique_comments = list(set(all_comments))
         
         return {
             "platform": platform,
             "total_items": total_items,
-            "texts": all_texts,
-            "comments": all_comments,
-            "all_texts": all_texts + all_comments if include_comments else all_texts,
+            "texts": unique_texts,
+            "comments": unique_comments,
+            "all_texts": unique_texts + unique_comments if include_comments else unique_texts,
+            "raw_items": all_raw_items,
             "file_count": len(file_paths),
             "processed_at": datetime.now().isoformat()
         }
@@ -276,45 +325,50 @@ class DataProcessor:
         """
         all_texts = []
         all_comments = []
+        all_raw_items = []
         total_items = 0
         platform_stats = {}
         
         for platform, file_paths in files_by_platform.items():
             platform_texts = []
             platform_comments = []
+            platform_raw_items = []
             platform_items = 0
             
             for file_path in file_paths:
                 result = self.process_json_file(file_path, platform, include_comments)
                 platform_texts.extend(result["texts"])
                 platform_comments.extend(result["comments"])
+                platform_raw_items.extend(result.get("raw_items", []))
                 platform_items += result["total_items"]
             
             # 去重
-            platform_texts = list(set(platform_texts))
-            platform_comments = list(set(platform_comments))
+            unique_p_texts = list(set(platform_texts))
+            unique_p_comments = list(set(platform_comments))
             
             platform_stats[platform] = {
                 "total_items": platform_items,
-                "texts_count": len(platform_texts),
-                "comments_count": len(platform_comments),
+                "texts_count": len(unique_p_texts),
+                "comments_count": len(unique_p_comments),
                 "file_count": len(file_paths)
             }
             
             all_texts.extend(platform_texts)
             all_comments.extend(platform_comments)
+            all_raw_items.extend(platform_raw_items)
             total_items += platform_items
         
         # 最终去重
-        all_texts = list(set(all_texts))
-        all_comments = list(set(all_comments))
+        unique_texts = list(set(all_texts))
+        unique_comments = list(set(all_comments))
         
         return {
             "platforms": list(files_by_platform.keys()),
             "total_items": total_items,
-            "texts": all_texts,
-            "comments": all_comments,
-            "all_texts": all_texts + all_comments if include_comments else all_texts,
+            "texts": unique_texts,
+            "comments": unique_comments,
+            "all_texts": unique_texts + unique_comments if include_comments else unique_texts,
+            "raw_items": all_raw_items,
             "platform_stats": platform_stats,
             "file_count": sum(len(files) for files in files_by_platform.values()),
             "processed_at": datetime.now().isoformat()
