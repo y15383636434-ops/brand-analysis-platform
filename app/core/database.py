@@ -127,7 +127,7 @@ async def init_db():
     
     # 创建表（同步方式）
     try:
-        from app.models import brand, crawl_task, analysis_task, report
+        from app.models import brand, crawl_task, analysis_task, report, data_import_task
         Base.metadata.create_all(bind=engine)
         logger.info("数据库表创建完成")
     except Exception as e:

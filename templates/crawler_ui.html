@@ -167,6 +167,14 @@
         .loading.show {
             display: block;
         }
+
+        .mode-fields {
+            display: none;
+        }
+        
+        .mode-fields.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -184,17 +192,31 @@
                     </div>
                     {% endfor %}
                 </div>
-                <small style="color: #666; margin-top: 10px; display: block;">提示: 可以选择多个平台同时爬取</small>
             </div>
             
             <div class="form-group">
                 <label for="brand_name">品牌名称 *</label>
                 <input type="text" id="brand_name" name="brand_name" required placeholder="请输入品牌名称">
             </div>
-            
+
             <div class="form-group">
+                <label for="crawl_type">爬取模式</label>
+                <select id="crawl_type" name="crawl_type" onchange="handleModeChange(this.value)">
+                    <option value="search">关键词搜索</option>
+                    <option value="creator">指定博主主页</option>
+                    <option value="detail">指定帖子/视频链接</option>
+                </select>
+            </div>
+            
+            <div id="field-keywords" class="form-group mode-fields active">
                 <label for="keywords">搜索关键词 * (多个关键词用逗号分隔)</label>
-                <input type="text" id="keywords" name="keywords" required placeholder="例如: 联想 拯救者, 游戏本">
+                <input type="text" id="keywords" name="keywords" placeholder="例如: 联想 拯救者, 游戏本">
+            </div>
+
+            <div id="field-target-url" class="form-group mode-fields">
+                <label for="target_url">目标链接 *</label>
+                <input type="text" id="target_url" name="target_url" placeholder="请输入博主主页链接或帖子链接">
+                <small style="color: #666; display: block; margin-top: 5px;">注意：抖音博主请使用分享链接（如 https://v.douyin.com/xxx/）或主页URL</small>
             </div>
             
             <div class="form-group">
@@ -206,6 +228,10 @@
                 <div class="checkbox-group">
                     <input type="checkbox" id="include_comments" name="include_comments" checked>
                     <label for="include_comments">包含评论</label>
+                </div>
+                <div class="checkbox-group" style="margin-top: 10px;">
+                    <input type="checkbox" id="download_media" name="download_media" checked>
+                    <label for="download_media">下载媒体文件 (视频/图片)</label>
                 </div>
             </div>
             
@@ -221,21 +247,39 @@
     </div>
     
     <script>
+        function handleModeChange(mode) {
+            document.querySelectorAll('.mode-fields').forEach(el => el.classList.remove('active'));
+            if (mode === 'search') {
+                document.getElementById('field-keywords').classList.add('active');
+            } else {
+                document.getElementById('field-target-url').classList.add('active');
+            }
+        }
+
         async function handleSubmit(event) {
             event.preventDefault();
             
             const form = event.target;
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
+            const crawlType = form.crawl_type.value;
             
             // 收集选中的平台
             const selectedPlatforms = Array.from(form.querySelectorAll('input[name="platform"]:checked'))
                 .map(cb => cb.value);
             
             if (selectedPlatforms.length === 0) {
-                result.style.display = 'block';
-                result.className = 'result error';
-                result.innerHTML = '<h3>❌ 请至少选择一个平台</h3>';
+                showError('❌ 请至少选择一个平台');
+                return;
+            }
+
+            // 验证必填项
+            if (crawlType === 'search' && !form.keywords.value.trim()) {
+                showError('❌ 请输入搜索关键词');
+                return;
+            }
+            if ((crawlType === 'creator' || crawlType === 'detail') && !form.target_url.value.trim()) {
+                showError('❌ 请输入目标链接');
                 return;
             }
             
@@ -243,9 +287,16 @@
             const formData = new FormData();
             formData.append('platforms', selectedPlatforms.join(','));
             formData.append('brand_name', form.brand_name.value);
-            formData.append('keywords', form.keywords.value);
+            formData.append('crawl_type', crawlType);
             formData.append('max_items', form.max_items.value);
             formData.append('include_comments', form.include_comments.checked);
+            formData.append('download_media', form.download_media.checked);
+
+            if (crawlType === 'search') {
+                formData.append('keywords', form.keywords.value);
+            } else {
+                formData.append('target_url', form.target_url.value);
+            }
             
             // 显示加载状态
             loading.classList.add('show');
@@ -294,6 +345,7 @@
                     result.innerHTML = `
                         <h3>✅ 爬取任务已启动！</h3>
                         <p><strong>品牌ID:</strong> ${data.brand_id}</p>
+                        <p><strong>模式:</strong> ${crawlType === 'search' ? '关键词搜索' : (crawlType === 'creator' ? '指定博主' : '指定链接')}</p>
                         <p><strong>平台:</strong> ${platformNames}</p>
                         <p><strong>成功创建:</strong> ${data.successful_tasks || 0} / ${data.total_tasks || 0} 个任务</p>
                         ${tasksHtml}
@@ -307,17 +359,20 @@
                         </p>
                     `;
                 } else {
-                    result.className = 'result error';
-                    result.innerHTML = `<h3>❌ 爬取失败</h3><p>${data.error || '未知错误'}</p>`;
+                    showError(`❌ 爬取失败: ${data.error || '未知错误'}`);
                 }
             } catch (error) {
                 loading.classList.remove('show');
-                result.style.display = 'block';
-                result.className = 'result error';
-                result.innerHTML = `<h3>❌ 请求失败</h3><p>${error.message}</p>`;
+                showError(`❌ 请求失败: ${error.message}`);
             }
+        }
+
+        function showError(msg) {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.className = 'result error';
+            result.innerHTML = `<h3>${msg}</h3>`;
         }
     </script>
 </body>
 </html>
-

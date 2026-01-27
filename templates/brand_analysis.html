@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -466,13 +467,23 @@
     </div>
 
     <script>
-        // 获取 URL 参数
+        // 获取品牌ID
+        // 优先使用服务端渲染的ID，如果为空则尝试从URL参数获取
+        // 注意：使用引号包裹模板变量，确保即使是数字也被视为字符串
+        const serverBrandId = "{{ brand_id or '' }}";
         const urlParams = new URLSearchParams(window.location.search);
-        const brandId = urlParams.get('brand_id') || urlParams.get('id');
+        
+        // 检查 serverBrandId 是否为有效的 ID (不是模板占位符且不为None)
+        // 注意：Jinja2 渲染时如果变量为 None，会输出 'None' 字符串
+        // 使用 '{' + '{' 避免被 Jinja2 解析为模板标签
+        const isServerIdValid = serverBrandId && !serverBrandId.includes('{' + '{') && serverBrandId !== 'None';
+        
+        const brandId = isServerIdValid ? serverBrandId : (urlParams.get('brand_id') || urlParams.get('id'));
 
         if (!brandId) {
             showError('未找到品牌 ID');
         } else {
+            console.log('Current Brand ID:', brandId);
             loadData();
         }
 
@@ -487,6 +498,12 @@
                 // 请求数据
                 const response = await fetch(`/api/v1/brands/${brandId}/analysis?include_charts=false`);
                 const res = await response.json();
+
+                // 处理未找到分析结果的情况 (404)
+                if (res.code === 404) {
+                    showEmptyState(res.message);
+                    return;
+                }
 
                 if (res.code !== 200 && res.code !== 202) {
                     throw new Error(res.message || '获取数据失败');
@@ -527,6 +544,64 @@
             }
         }
 
+        function showEmptyState(msg) {
+            document.getElementById('loading').style.display = 'none';
+            const errorContainer = document.getElementById('error');
+            errorContainer.style.display = 'flex';
+            errorContainer.innerHTML = `
+                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                <h3 style="margin-bottom: 8px;">暂无分析报告</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">${msg || '该品牌还没有进行AI深度分析'}</p>
+                
+                <div style="margin-bottom: 16px;">
+                    <select id="analysisTypeSelect" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-right: 8px;">
+                        <option value="comprehensive">全方位深度分析 (默认)</option>
+                        <option value="marketing_strategy">营销策略分析</option>
+                        <option value="product_feedback">产品反馈分析</option>
+                        <option value="crisis_detection">舆情风险分析</option>
+                    </select>
+                </div>
+
+                <button onclick="startAnalysis()" class="btn btn-primary" style="padding: 10px 24px;">🚀 立即启动分析</button>
+            `;
+        }
+
+        async function startAnalysis() {
+            const typeSelect = document.getElementById('analysisTypeSelect');
+            const analysisType = typeSelect ? typeSelect.value : 'comprehensive';
+            const typeName = typeSelect ? typeSelect.options[typeSelect.selectedIndex].text : '深度分析';
+
+            if (!confirm(`确定要启动 ${typeName} 吗？\n\n这将基于已关联的数据生成报告，耗时约1-3分钟。`)) return;
+            
+            try {
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('loading').style.display = 'flex';
+                document.getElementById('loading').innerHTML = '<div class="loading-spinner"></div><p>正在启动分析任务...</p>';
+                
+                const response = await fetch(`/api/v1/brands/${brandId}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        analysis_type: analysisType,
+                        include_sentiment: true,
+                        include_topics: true,
+                        include_keywords: true,
+                        include_insights: true
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.code === 200) {
+                    // 重新加载，将进入 202 等待状态
+                    loadData();
+                } else {
+                    showError('启动失败: ' + (data.message || '未知错误'));
+                }
+            } catch (e) {
+                showError('启动失败: ' + e.message);
+            }
+        }
+
         function renderHeader(data) {
             document.getElementById('brandName').textContent = `${data.brand_name} 深度分析报告`;
             document.getElementById('metaInfo').textContent = `生成时间: ${data.generated_at || '刚刚'}`;
@@ -561,8 +636,28 @@
             // 渲染结构化数据
             document.getElementById('aiSummary').textContent = content.summary || '暂无总体评价';
             
-            renderList('aiPainPoints', content.pain_points);
-            renderList('aiSuggestions', content.marketing_suggestions || content.suggestions);
+            // 市场表现 (如果有)
+            if (content.market_performance) {
+                // 如果需要显示更多细节，可以在这里扩展，目前仅显示痛点和建议
+            }
+            
+            // 用户痛点/正面评价
+            const painPoints = content.pain_points || 
+                              (content.user_perception ? content.user_perception.pain_points : []) ||
+                              (content.product_perception ? content.product_perception.cons : []);
+            renderList('aiPainPoints', painPoints);
+
+            // 营销建议/内容建议
+            const suggestions = content.marketing_suggestions || 
+                               content.suggestions || 
+                               (content.content_strategy ? content.content_strategy.content_recommendations : []) ||
+                               (content.improvement_suggestions ? content.improvement_suggestions : []);
+            renderList('aiSuggestions', suggestions);
+            
+            // 如果有额外的内容策略建议，追加显示
+            if (content.content_strategy && content.content_strategy.engaging_topics) {
+                 // 可以考虑在页面上增加一个区域显示热门话题，或者合并到建议中
+            }
         }
 
         function renderList(elementId, items) {

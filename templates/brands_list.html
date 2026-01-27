@@ -662,7 +662,246 @@
         </div>
     </div>
     
+    <!-- 关联数据模态窗口 -->
+    <div id="dataImportModal" class="modal-overlay">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="importModalTitle">关联数据文件</h3>
+                <button class="modal-close" onclick="closeImportModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="importBrandId" value="">
+                
+                <div class="toolbar" style="margin-bottom: 15px; padding: 10px;">
+                    <div class="filter-group">
+                        <select id="importPlatformFilter" onchange="loadImportFiles()">
+                            <option value="">全部平台</option>
+                            <option value="xhs">小红书</option>
+                            <option value="douyin">抖音</option>
+                            <option value="weibo">微博</option>
+                            <option value="bilibili">B站</option>
+                            <option value="zhihu">知乎</option>
+                            <option value="kuaishou">快手</option>
+                        </select>
+                    </div>
+                    <div class="search-box" style="display: flex; gap: 8px;">
+                        <input type="text" id="importSearchInput" placeholder="搜索文件名..." onkeyup="if(event.key === 'Enter') loadImportFiles()">
+                        <button class="btn" onclick="loadImportFiles()" style="padding: 8px 12px; white-space: nowrap; background: #667eea; color: white; border: none;">搜索</button>
+                    </div>
+                </div>
+
+                <div id="fileListContainer" style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <!-- 文件列表将通过JS动态生成 -->
+                    <div class="loading">正在加载文件列表...</div>
+                </div>
+                
+                <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <input type="checkbox" id="selectAllFiles" onchange="toggleSelectAllFiles(this)">
+                        <label for="selectAllFiles">全选</label>
+                        <span id="selectedCount" style="margin-left: 10px; color: #666;">已选 0 个文件</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">取消</button>
+                <button id="confirmImportBtn" class="btn btn-primary" onclick="confirmImportFiles()">确认关联</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .file-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .file-item:hover {
+            background-color: #f5f7fa;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            gap: 10px;
+        }
+        .platform-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: white;
+        }
+    </style>
+
     <script>
+        // ... 原有代码 ...
+        
+        let importFiles = [];
+        
+        // 打开关联数据模态框
+        function openImportModal(brandId, brandName) {
+            document.getElementById('importBrandId').value = brandId;
+            document.getElementById('importModalTitle').textContent = `关联数据 - ${brandName}`;
+            document.getElementById('dataImportModal').classList.add('show');
+            
+            // 重置筛选
+            document.getElementById('importPlatformFilter').value = '';
+            document.getElementById('importSearchInput').value = '';
+            
+            loadImportFiles();
+        }
+        
+        // 关闭关联数据模态框
+        function closeImportModal() {
+            document.getElementById('dataImportModal').classList.remove('show');
+        }
+        
+        // 加载可关联的文件列表
+        async function loadImportFiles() {
+            const container = document.getElementById('fileListContainer');
+            container.innerHTML = '<div class="loading">正在加载文件列表...</div>';
+            
+            const platform = document.getElementById('importPlatformFilter').value;
+            const keyword = document.getElementById('importSearchInput').value.trim();
+            
+            try {
+                let url = '/api/v1/data/files?';
+                if (platform) url += `platform=${platform}&`;
+                if (keyword) url += `keyword=${encodeURIComponent(keyword)}`;
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    importFiles = result.data.items;
+                    renderFileList(importFiles);
+                } else {
+                    container.innerHTML = `<div class="empty">${result.message || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                console.error('加载文件列表失败:', error);
+                container.innerHTML = '<div class="empty">加载文件列表失败</div>';
+            }
+        }
+        
+        // 渲染文件列表
+        function renderFileList(files) {
+            const container = document.getElementById('fileListContainer');
+            if (!files || files.length === 0) {
+                container.innerHTML = '<div class="empty">没有找到相关的数据文件</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.onclick = (e) => {
+                    if (e.target.type !== 'checkbox') {
+                        const cb = div.querySelector('input[type="checkbox"]');
+                        cb.checked = !cb.checked;
+                        updateSelectedCount();
+                    }
+                };
+                
+                const sizeStr = (file.size / 1024).toFixed(1) + ' KB';
+                const dateStr = new Date(file.modified_time).toLocaleString();
+                const platformClass = `platform-${file.platform}`;
+                const platformName = getPlatformName(file.platform);
+                
+                div.innerHTML = `
+                    <input type="checkbox" class="file-select-cb" value="${file.path}" onchange="updateSelectedCount()">
+                    <div class="file-info">
+                        <div class="file-name">${file.filename}</div>
+                        <div class="file-meta">
+                            <span class="platform-badge ${platformClass}">${platformName}</span>
+                            <span>${sizeStr}</span>
+                            <span>${dateStr}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            updateSelectedCount();
+        }
+        
+        // 全选/取消全选
+        function toggleSelectAllFiles(source) {
+            document.querySelectorAll('.file-select-cb').forEach(cb => {
+                cb.checked = source.checked;
+            });
+            updateSelectedCount();
+        }
+        
+        // 更新选中数量
+        function updateSelectedCount() {
+            const count = document.querySelectorAll('.file-select-cb:checked').length;
+            document.getElementById('selectedCount').textContent = `已选 ${count} 个文件`;
+        }
+        
+        // 确认导入
+        async function confirmImportFiles() {
+            const btn = document.getElementById('confirmImportBtn');
+            const brandId = document.getElementById('importBrandId').value;
+            const selectedFiles = Array.from(document.querySelectorAll('.file-select-cb:checked')).map(cb => cb.value);
+            
+            if (selectedFiles.length === 0) {
+                alert('请至少选择一个文件');
+                return;
+            }
+            
+            if (!confirm(`确定要将选中的 ${selectedFiles.length} 个文件关联到当前品牌吗？`)) {
+                return;
+            }
+            
+            try {
+                // 禁用按钮防止重复提交
+                btn.disabled = true;
+                btn.textContent = '处理中...';
+                
+                showMessage('正在启动导入任务...', 'info');
+                
+                const response = await fetch(`/api/v1/brands/${brandId}/import-files`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(selectedFiles)
+                });
+                
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    closeImportModal();
+                    showMessage('已启动后台导入任务，请稍后刷新查看数据', 'success');
+                } else {
+                    alert('导入失败: ' + (result.detail || result.message));
+                }
+            } catch (error) {
+                console.error('导入请求失败:', error);
+                alert('导入失败: ' + error.message);
+            } finally {
+                // 恢复按钮状态
+                btn.disabled = false;
+                btn.textContent = '确认关联';
+            }
+        }
+
         let currentPage = 1;
         let pageSize = 12;
         let totalPages = 1;
@@ -746,6 +985,13 @@
         window.handleSearch = handleSearch;
         window.filterBrands = filterBrands;
         window.refreshBrands = refreshBrands;
+        
+        window.openImportModal = openImportModal;
+        window.closeImportModal = closeImportModal;
+        window.loadImportFiles = loadImportFiles;
+        window.toggleSelectAllFiles = toggleSelectAllFiles;
+        window.updateSelectedCount = updateSelectedCount;
+        window.confirmImportFiles = confirmImportFiles;
         
         // 加载品牌列表
         async function loadBrands() {
@@ -864,12 +1110,87 @@
                 </div>
                 <div class="brand-actions">
                     <a href="/api/v1/data?brand_id=${brand.id}" class="btn-action btn-view" target="_blank">查看数据</a>
+                    <button class="btn-action btn-view" onclick="openImportModal(${brand.id}, '${escapeHtml(brand.name)}')" style="background: #2196f3;" title="导入已爬取的数据">关联数据</button>
+                    <button class="btn-action btn-view" onclick="startAnalysis(${brand.id}, '${escapeHtml(brand.name)}')" style="background: #8b5cf6;" title="生成AI分析报告">AI分析</button>
                     <button class="btn-action btn-edit" onclick="openEditModal(${brand.id})">编辑</button>
                     <button class="btn-action btn-delete" onclick="deleteBrand(${brand.id}, '${escapeHtml(brand.name)}')">删除</button>
                 </div>
             `;
             
             return card;
+        }
+
+        // 启动AI分析
+        async function startAnalysis(brandId, brandName) {
+            if (!confirm(`确定要为品牌 "${brandName}" 启动AI深度分析吗？\n\n这将基于已关联的数据生成情感分析、趋势洞察等报告。\n耗时可能需要1-3分钟。`)) {
+                return;
+            }
+            
+            try {
+                showMessage('正在启动AI分析任务...', 'info');
+                
+                const response = await fetch(`/api/v1/brands/${brandId}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        analysis_type: "full",
+                        include_sentiment: true,
+                        include_topics: true,
+                        include_keywords: true,
+                        include_insights: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    showMessage('分析任务已启动！正在跳转...', 'success');
+                    // 延迟跳转到分析页面
+                    setTimeout(() => {
+                        window.open(`/api/v1/brands/${brandId}/analysis/view`, '_blank');
+                    }, 1000);
+                } else {
+                    const errorMsg = data.detail || data.message || `HTTP ${response.status}`;
+                    alert('启动失败: ' + errorMsg);
+                }
+            } catch (error) {
+                console.error('分析请求失败:', error);
+                alert('启动失败: ' + error.message);
+            }
+        }
+
+        // 导入数据
+        async function importData(brandId) {
+            if (!confirm('确定要为该品牌执行一键数据导入/关联吗？\n\n这将自动扫描已爬取的数据文件并关联到该品牌。')) {
+                return;
+            }
+            
+            try {
+                showMessage('正在启动数据导入任务...', 'info');
+                
+                const response = await fetch(`/api/v1/brands/${brandId}/import-data`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.code === 200) {
+                    showMessage(data.message, 'success');
+                } else {
+                    const errorMsg = data.detail || data.message || `HTTP ${response.status}`;
+                    alert('启动失败: ' + errorMsg);
+                }
+            } catch (error) {
+                console.error('导入请求失败:', error);
+                alert('启动失败: ' + error.message);
+            }
         }
         
         // 显示分页

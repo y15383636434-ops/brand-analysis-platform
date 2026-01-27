@@ -65,7 +65,10 @@ def crawl_brand_task(self, task_id: int):
             platform=task.platform,
             keywords=keywords,
             max_items=task.max_items,
-            include_comments=True
+            include_comments=True,
+            crawl_type=task.crawl_type.value if hasattr(task.crawl_type, "value") else str(task.crawl_type),
+            target_url=task.target_url,
+            enable_media_download=bool(task.download_media)
         )
         
         # 更新进度

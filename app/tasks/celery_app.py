@@ -9,7 +9,7 @@ celery_app = Celery(
     "brand_analysis",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.crawl_tasks", "app.tasks.analysis_tasks"]  # 包含任务模块
+    include=["app.tasks.crawl_tasks", "app.tasks.analysis_tasks", "app.tasks.import_tasks"]  # 包含任务模块
 )
 
 # Celery配置

@@ -24,7 +24,7 @@ def setup_logging():
         level=settings.LOG_LEVEL,
         encoding='utf-8',
         errors='replace',
-        enqueue=True  # 异步写入，线程安全
+        enqueue=False  # 异步写入，线程安全
     )
     
     return logger

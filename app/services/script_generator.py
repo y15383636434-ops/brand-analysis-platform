@@ -2,7 +2,7 @@
 为每个平台生成独立的MediaCrawler爬取脚本
 """
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from loguru import logger
 from datetime import datetime
 from app.services.login_checker import LoginChecker
@@ -44,7 +44,7 @@ class ScriptGenerator:
         self.mediacrawler_path = mediacrawler_path
         if scripts_dir is None:
             # 从app/services/script_generator.py -> app/services -> app -> project_root
-            project_root = Path(__file__).parent.parent.parent.parent
+            project_root = Path(__file__).parent.parent.parent
             scripts_dir = project_root / "crawl_scripts"
         self.scripts_dir = Path(scripts_dir).resolve()
         self.scripts_dir.mkdir(parents=True, exist_ok=True)
@@ -60,7 +60,9 @@ class ScriptGenerator:
         max_items: int = 10,
         note_type: str = "all",
         include_comments: bool = True,
-        include_sub_comments: bool = False
+        include_sub_comments: bool = False,
+        crawl_type: str = "search",
+        target_url: Optional[str] = None
     ) -> Path:
         """
         为指定平台生成爬取脚本
@@ -72,6 +74,8 @@ class ScriptGenerator:
             note_type: 笔记类型（仅小红书支持）
             include_comments: 是否包含评论
             include_sub_comments: 是否包含子评论
+            crawl_type: 爬取类型 (search/creator/detail)
+            target_url: 目标URL (用于creator/detail模式)
             
         Returns:
             生成的脚本文件路径
@@ -115,10 +119,48 @@ class ScriptGenerator:
             main_py_abs,
             "--platform", mediacrawler_platform,
             "--lt", login_type,  # 如果已登录则使用cookie，否则使用qrcode
-            "--type", "search",
-            "--keywords", keywords,
+            "--type", crawl_type,
             "--save_data_option", "json",
         ]
+        
+        # 处理关键词参数
+        # 1. 搜索模式：使用用户输入的关键词
+        # 2. 其他模式：提取目标URL的关键部分作为关键词（用于生成文件名）
+        if crawl_type == "search" and keywords:
+            cmd_parts.extend(["--keywords", keywords])
+        elif crawl_type in ["creator", "detail"] and target_url:
+            # 尝试从URL中提取标识符作为关键词，以便生成的文件名易于识别
+            import re
+            # 提取最后一部分，或者特定参数
+            kw = "target"
+            if "user/" in target_url:
+                match = re.search(r"user/([^/?]+)", target_url)
+                if match: kw = match.group(1)
+            elif "video/" in target_url:
+                match = re.search(r"video/(\d+)", target_url)
+                if match: kw = match.group(1)
+            elif "note/" in target_url: # 小红书
+                match = re.search(r"note/([a-zA-Z0-9]+)", target_url)
+                if match: kw = match.group(1)
+            elif "profile/" in target_url: # 小红书
+                match = re.search(r"profile/([a-zA-Z0-9]+)", target_url)
+                if match: kw = match.group(1)
+            elif "modal_id=" in target_url:
+                match = re.search(r"modal_id=(\d+)", target_url)
+                if match: kw = match.group(1)
+            else:
+                # 取URL最后一段
+                parts = [p for p in target_url.split("/") if p]
+                if parts:
+                    kw = parts[-1].split("?")[0]
+            
+            # 限制长度和字符
+            if len(kw) > 20: kw = kw[:20]
+            if not kw: kw = "target"
+            # 移除非法字符
+            kw = re.sub(r'[\\/:*?"<>|]', '', kw)
+            
+            cmd_parts.extend(["--keywords", kw])
         
         # 笔记类型（仅支持笔记类型的平台）
         if features.get("supports_note_type", False):
@@ -134,12 +176,124 @@ class ScriptGenerator:
         else:
             cmd_parts.extend(["--get_comment", "no"])
             cmd_parts.extend(["--get_sub_comment", "no"])
+            
+        # 准备配置修改代码
+        config_update_code = ""
+        config_restore_code = ""
+        
+        if crawl_type in ["creator", "detail"] and target_url:
+            # 确定配置文件和变量名
+            config_file = ""
+            var_name = ""
+            
+            if platform in ["dy", "douyin"]:
+                config_file = "dy_config.py"
+                if crawl_type == "creator":
+                    var_name = "DY_CREATOR_ID_LIST"
+                else:
+                    var_name = "DY_SPECIFIED_ID_LIST"
+            elif platform in ["xhs"]:
+                config_file = "xhs_config.py"
+                if crawl_type == "creator":
+                    var_name = "XHS_CREATOR_ID_LIST"
+                else:
+                    var_name = "XHS_SPECIFIED_NOTE_URL_LIST"
+            # 可以在这里添加其他平台的支持
+            
+            if config_file and var_name:
+                # 目标URL可能是单个字符串，如果包含逗号，也可以分割
+                # 这里假设用户输入单个URL，或者是逗号分隔的URL
+                url_list = [u.strip() for u in target_url.split(',') if u.strip()]
+                
+                config_update_code = f"""
+# ==========================================
+# 动态修改配置文件
+# ==========================================
+import re
+import traceback
+
+config_file_path = mediacrawler_path / "config" / "{config_file}"
+backup_file_path = config_file_path.with_suffix('.py.bak')
+
+try:
+    if config_file_path.exists():
+        print(f"正在修改配置文件: {{config_file_path}}")
+        with open(config_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        # 备份配置文件
+        with open(backup_file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"已备份配置文件到: {{backup_file_path}}")
+            
+        # 替换变量值
+        target_urls = {repr(url_list)}
+        
+        # 构造新的赋值语句
+        new_assignment = f'{var_name} = {{target_urls}}'
+        
+        # 使用正则替换整个列表定义
+        # 匹配 {var_name} = [ ... ] (包括多行)
+        pattern = r'{var_name}\\s*=\\s*\\[.*?\\]'
+        
+        print(f"配置文件路径: {{config_file_path}}")
+        print(f"尝试匹配正则: {{pattern}}")
+        
+        match = re.search(pattern, content, re.DOTALL)
+        
+        if match:
+            print(f"找到配置项，旧内容长度: {{len(match.group(0))}}")
+            print(f"旧内容(前100字符): {{match.group(0)[:100]}}...")
+            
+            new_content = re.sub(pattern, new_assignment, content, flags=re.DOTALL)
+            
+            with open(config_file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+                f.flush()
+                os.fsync(f.fileno())
+                
+            print(f"已更新配置变量 {var_name}")
+            print(f"新内容(前100字符): {{new_assignment[:100]}}...")
+        else:
+            print(f"警告: 未在配置文件中找到变量 {var_name}，尝试直接追加")
+            print(f"文件内容预览(前200字符): {{content[:200]}}")
+            # 如果没找到，尝试追加
+            with open(config_file_path, 'a', encoding='utf-8') as f:
+                f.write(f"\\n{{new_assignment}}\\n")
+except Exception as e:
+    print(f"修改配置文件失败: {{e}}")
+    traceback.print_exc()
+"""
+
+                config_restore_code = f"""
+# ==========================================
+# 恢复配置文件
+# ==========================================
+try:
+    if os.path.exists(backup_file_path):
+        # 读取备份文件
+        with open(backup_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        # 写入原文件
+        with open(config_file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        # 删除备份
+        os.remove(backup_file_path)
+        print(f"已恢复配置文件 {{config_file_path}}")
+    else:
+        print(f"未找到备份文件，无法恢复: {{backup_file_path}}")
+except Exception as e:
+    print(f"恢复配置文件失败: {{e}}")
+    traceback.print_exc()
+"""
         
         # 生成脚本内容
         script_content = f'''"""
 自动生成的MediaCrawler爬取脚本
 平台: {platform} ({mediacrawler_platform})
-关键词: {keywords}
+类型: {crawl_type}
+关键词: {keywords if crawl_type == "search" else "N/A"}
+目标URL: {target_url if crawl_type != "search" else "N/A"}
 最大数量: {max_items}
 生成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
@@ -169,12 +323,23 @@ work_dir = str(mediacrawler_path)
 # 执行命令
 print("=" * 70)
 print(f"开始爬取: {platform}")
-print(f"关键词: {keywords}")
-print(f"最大数量: {max_items}")
+print(f"类型: {crawl_type}")
+'''
+
+        if crawl_type == "search":
+            script_content += f'''print(f"关键词: {keywords}")
+'''
+        elif target_url:
+            script_content += f'''print(f"目标URL: {target_url}")
+'''
+
+        script_content += f'''print(f"最大数量: {max_items}")
 print("=" * 70)
 print(f"工作目录: {{work_dir}}")
 print(f"执行命令: {{' '.join(cmd)}}")
 print("=" * 70)
+
+{config_update_code}
 
 try:
     # 使用Popen实时捕获输出并转发到stdout，这样Web界面可以捕获
@@ -305,16 +470,19 @@ try:
     
     if returncode != 0:
         print(f"错误: 爬取失败，返回码 {{returncode}}")
-        sys.exit(returncode)
     else:
         print("爬取成功！")
-        sys.exit(0)
         
 except Exception as e:
     print(f"执行失败: {{e}}")
     import traceback
     traceback.print_exc()
-    sys.exit(1)
+    returncode = 1
+
+{config_restore_code}
+
+# 退出
+sys.exit(returncode if 'returncode' in locals() else 1)
 '''
         
         # 写入脚本文件
@@ -345,4 +513,3 @@ except Exception as e:
             if scripts:
                 return scripts[0]
             return None
-

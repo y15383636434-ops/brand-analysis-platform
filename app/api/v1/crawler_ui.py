@@ -59,7 +59,8 @@ async def start_crawl(
     brand_name: str = Form(...),
     keywords: str = Form(...),
     max_items: int = Form(10),
-    include_comments: bool = Form(True)
+    include_comments: bool = Form(True),
+    download_media: bool = Form(True)
 ):
     """启动爬虫任务（支持多平台）"""
     # 解析平台列表
@@ -96,7 +97,8 @@ async def start_crawl(
             brand_name=brand_name,
             keywords=keyword_list,
             max_items=max_items,
-            include_comments=include_comments
+            include_comments=include_comments,
+            download_media=download_media
         )
         
         return result

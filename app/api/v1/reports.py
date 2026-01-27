@@ -1,15 +1,20 @@
 """
 报告生成API
 """
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from pathlib import Path
+import tempfile
+import os
+from datetime import datetime
 
 from app.core.database import get_db
 from app.models.brand import Brand
 from app.models.report import Report, ReportStatus
+from app.models.analysis_task import AnalysisTask
+from app.models.crawl_task import TaskStatus
 from config import settings
 
 router = APIRouter()
@@ -21,6 +26,116 @@ class ReportCreate(BaseModel):
     format: str = "pdf"
     include_charts: bool = True
     language: str = "zh-CN"
+
+
+@router.get("/brands/{brand_id}/reports")
+async def export_brand_report(
+    brand_id: int,
+    format: str = Query("pdf", regex="^(pdf|md|markdown)$"),
+    db: Session = Depends(get_db)
+):
+    """
+    即时导出最新分析报告 (支持 PDF 和 Markdown)
+    """
+    # 检查品牌是否存在
+    brand = db.query(Brand).filter(Brand.id == brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="品牌不存在")
+    
+    # 获取最新的已完成分析任务
+    task = db.query(AnalysisTask).filter(
+        AnalysisTask.brand_id == brand_id,
+        AnalysisTask.status == TaskStatus.COMPLETED
+    ).order_by(AnalysisTask.completed_at.desc()).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="该品牌暂无已完成的分析任务，无法生成报告")
+    
+    # 从MongoDB获取详细分析结果
+    from app.core.database import get_mongodb
+    mongodb = get_mongodb()
+    result = mongodb.analysis_results.find_one({"analysis_task_id": task.id})
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="分析结果数据丢失")
+        
+    analysis_result = result.get("result", {})
+    
+    # 准备报表数据
+    from app.services.report_service import report_service
+    brand_info = {
+        "id": brand.id,
+        "name": brand.name,
+        "description": brand.description
+    }
+    
+    report_data = report_service.prepare_report_data(
+        brand_name=brand.name,
+        analysis_result=analysis_result,
+        brand_info=brand_info
+    )
+    
+    # 根据格式生成报告
+    if format in ["md", "markdown"]:
+        # 生成 Markdown
+        md_content = report_service.generate_markdown_report(report_data)
+        
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as tmp:
+            tmp.write(md_content)
+            tmp_path = tmp.name
+            
+        filename = f"{brand.name}_分析报告_{datetime.now().strftime('%Y%m%d')}.md"
+        
+        # 返回文件，并在发送后删除（需配合后台任务删除，这里简单处理由FileResponse管理读取，但不自动删除）
+        # 为了自动删除，可以使用 BackgroundTask
+        from starlette.background import BackgroundTask
+        
+        def cleanup(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+                
+        return FileResponse(
+            tmp_path,
+            filename=filename,
+            media_type="text/markdown",
+            background=BackgroundTask(cleanup, tmp_path)
+        )
+        
+    else:
+        # 生成 PDF (现有的逻辑，可能需要异步，这里暂时报错提示使用POST接口如果太慢)
+        # 为了简单起见，这里复用 HTML -> PDF 逻辑
+        charts = report_service.generate_charts(analysis_result)
+        html_content = report_service.render_html_report(
+            report_data=report_data,
+            charts=charts
+        )
+        
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+            tmp_path = tmp.name
+            
+        success = report_service.html_to_pdf(html_content, Path(tmp_path))
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="PDF生成失败，请检查服务器配置或尝试Markdown格式")
+            
+        filename = f"{brand.name}_分析报告_{datetime.now().strftime('%Y%m%d')}.pdf"
+        
+        from starlette.background import BackgroundTask
+        def cleanup(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+                
+        return FileResponse(
+            tmp_path,
+            filename=filename,
+            media_type="application/pdf",
+            background=BackgroundTask(cleanup, tmp_path)
+        )
 
 
 @router.post("/brands/{brand_id}/reports", response_model=dict)

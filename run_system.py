@@ -240,6 +240,11 @@ def main():
     print_header("步骤 4/5: 验证服务状态")
     check_service_health()
     
+    # 自动打开浏览器
+    print_info("正在打开浏览器...")
+    import webbrowser
+    webbrowser.open("http://localhost:8000/api/v1/dashboard")
+    
     # 7. 显示服务信息
     print_header("步骤 5/5: 启动完成")
     print_success("服务已启动！")
@@ -266,6 +271,3 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         input("\n按回车键退出...")
-
-
-

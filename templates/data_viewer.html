@@ -158,6 +158,30 @@
             line-height: 1.6;
         }
         
+        .data-main-info {
+             display: flex;
+             gap: 20px;
+             align-items: flex-start;
+        }
+
+        .data-preview {
+             flex: 0 0 200px;
+             max-width: 200px;
+        }
+        
+        .data-preview img, .data-preview video {
+             width: 100%;
+             max-height: 300px;
+             border-radius: 8px;
+             border: 1px solid #ddd;
+             object-fit: contain;
+             background: #000;
+        }
+
+        .data-details {
+             flex: 1;
+        }
+
         .data-content pre {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -165,8 +189,9 @@
             border-radius: 5px;
             overflow-x: auto;
             font-size: 12px;
-            max-height: 400px;
+            max-height: 200px; /* 减小默认高度 */
             overflow-y: auto;
+            margin-top: 10px;
         }
         
         .pagination {
@@ -211,6 +236,31 @@
             font-size: 48px;
             margin-bottom: 10px;
         }
+        
+        .link-btn {
+            display: inline-block;
+            margin-top: 5px;
+            margin-right: 15px;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .link-btn:hover {
+            text-decoration: underline;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            font-size: 12px;
+            text-decoration: underline;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -243,6 +293,13 @@
             </select>
             <button onclick="loadData()">刷新数据</button>
             <button onclick="loadStats()">刷新统计</button>
+            <button onclick="deleteSelected()" id="batch-delete-btn" style="background: #f44336; display: none;">批量删除</button>
+        </div>
+        
+        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
+            <input type="checkbox" id="select-all" onchange="toggleSelectAll()" style="width: 18px; height: 18px; cursor: pointer;">
+            <label for="select-all" style="cursor: pointer; color: #333; font-weight: 500;">全选本页</label>
+            <span id="selected-count" style="color: #666; font-size: 14px; font-weight: 500;"></span>
         </div>
         
         <!-- 错误提示 -->
@@ -268,6 +325,41 @@
         let totalPages = 1;
         const pageSize = 20;
         
+        // 格式化时间
+        function formatTime(timestamp) {
+            if (!timestamp) return '未知时间';
+            
+            // 尝试转为数字
+            let ts = Number(timestamp);
+            let date;
+            
+            // 如果转换成功且是合理的数字
+            if (!isNaN(ts)) {
+                // 如果是毫秒级 (13位)
+                if (ts > 1000000000000) {
+                     date = new Date(ts);
+                } else {
+                     // 秒级 (10位)
+                     date = new Date(ts * 1000);
+                }
+            } else {
+                // 尝试直接解析字符串
+                date = new Date(timestamp);
+            }
+            
+            // 检查日期是否有效
+            if (date.toString() === 'Invalid Date') {
+                return String(timestamp); // 解析失败，返回原值
+            }
+            
+            // 检查是否是 1970 年 (无效的初始时间戳)
+            if (date.getFullYear() <= 1970) {
+                return '时间无效';
+            }
+            
+            return date.toLocaleString('zh-CN');
+        }
+
         // 页面加载时初始化
         window.onload = function() {
             loadStats();
@@ -347,6 +439,10 @@
             const dataList = document.getElementById('data-list');
             dataList.innerHTML = '';
             
+            // 重置全选状态
+            document.getElementById('select-all').checked = false;
+            updateSelection();
+            
             items.forEach(item => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'data-item';
@@ -361,23 +457,207 @@
                     'kuaishou': '快手'
                 };
                 
+                // 处理媒体显示
+                let mediaHtml = '';
+                let hasMedia = false;
+                
+                // 1. 尝试从 raw_data 中推断视频路径 (假设标准 MediaCrawler 目录结构)
+                // 路径规则: /media/douyin/{date}/{content_id}/video.mp4
+                // 我们需要从 crawled_at 获取日期
+                if (platform === 'douyin' && item.crawled_at && item.content_id) {
+                    try {
+                        // 提取日期 YYYYMMDD
+                        // item.crawled_at 格式通常是 "2024-01-14T15:00:00"
+                        const dateObj = new Date(item.crawled_at);
+                        const year = dateObj.getFullYear();
+                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(dateObj.getDate()).padStart(2, '0');
+                        // MediaCrawler 默认按日期文件夹存储吗？通常是的，但不确定具体格式
+                        // 很多时候是按关键词或平台分。
+                        // 由于路径不确定，这里我们先不强行猜测，除非我们能从 raw_data 中找到 file_path
+                        
+                        // 如果有 images 列表
+                        if (item.media && item.media.images && item.media.images.length > 0) {
+                             // 如果是本地路径，应该以 data/ 开头? 或者是 url
+                             // 暂不处理图片，优先视频
+                        }
+                    } catch(e) {}
+                }
+
+                // 获取原文链接
+                let originalUrl = '#';
+                if (item.raw_data && item.raw_data.url) {
+                    originalUrl = item.raw_data.url;
+                } else if (item.url) {
+                    originalUrl = item.url;
+                } else if (item.raw_data && item.raw_data.share_url) {
+                     originalUrl = item.raw_data.share_url;
+                } else if (platform === 'douyin' && item.content_id) {
+                     // 尝试构造链接
+                     originalUrl = `https://www.douyin.com/video/${item.content_id}`;
+                } else if (platform === 'xhs' && item.content_id) {
+                     originalUrl = `https://www.xiaohongshu.com/explore/${item.content_id}`;
+                }
+
+                // 发布时间
+                const publishTime = formatTime(item.publish_time || (item.raw_data && item.raw_data.create_time) || item.crawled_at);
+
+                // 构建媒体预览区
+                let previewHtml = '';
+                // 如果有本地视频路径记录 (需要 CrawlerService 配合记录)
+                if (item.video_path) {
+                     // 假设 /media 已经挂载到 crawled_data
+                     // video_path 应该是相对路径，如 douyin/20240114/xxx.mp4
+                     previewHtml = `
+                        <div class="data-preview">
+                            <video controls src="/media/${item.video_path}"></video>
+                        </div>
+                     `;
+                } else if (item.image_path) {
+                     previewHtml = `
+                        <div class="data-preview">
+                            <img src="/media/${item.image_path}" alt="封面">
+                        </div>
+                     `;
+                }
+
                 itemDiv.innerHTML = `
                     <div class="data-item-header">
-                        <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" class="item-checkbox" value="${item._id}" onchange="updateSelection()" style="width: 18px; height: 18px; cursor: pointer;">
                             <span class="platform-badge platform-${platform}">${platformNames[platform] || platform}</span>
                             <span style="margin-left: 10px; color: #666; font-size: 12px;">
-                                ${item.crawled_at ? new Date(item.crawled_at).toLocaleString('zh-CN') : '未知时间'}
+                                发布于: ${publishTime}
                             </span>
                         </div>
-                        ${item.task_id ? `<span style="color: #666; font-size: 12px;">任务ID: ${item.task_id}</span>` : ''}
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            ${item.task_id ? `<span style="color: #666; font-size: 12px;">任务ID: ${item.task_id}</span>` : ''}
+                            <button onclick="deleteItem('${item._id}')" style="padding: 4px 10px; font-size: 12px; background: #f44336; min-width: auto;">删除</button>
+                        </div>
                     </div>
                     <div class="data-content">
-                        <pre>${JSON.stringify(item, null, 2)}</pre>
+                        <div class="data-main-info">
+                             ${previewHtml}
+                             <div class="data-details">
+                                 <h4 style="margin-bottom: 5px;">
+                                     ${originalUrl !== '#' ? `<a href="${originalUrl}" target="_blank" style="color: #333; text-decoration: none; hover:text-decoration: underline;">${item.title || '无标题'}</a>` : (item.title || '无标题')}
+                                 </h4>
+                                 <p style="font-size: 14px; color: #555; margin-bottom: 5px; white-space: pre-wrap;">${(item.content || '').substring(0, 300)}${(item.content && item.content.length > 300) ? '...' : ''}</p>
+                                 
+                                 <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                     ${originalUrl !== '#' ? `<a href="${originalUrl}" target="_blank" class="link-btn">🔗 查看原文</a>` : ''}
+                                 </div>
+                                 
+                                 <div style="margin-top: 10px; font-size: 12px; color: #888;">
+                                     作者: ${item.author ? (item.author.name || '未知') : '未知'} | 
+                                     互动: 👍 ${item.engagement ? (item.engagement.likes || 0) : 0} 
+                                     💬 ${item.engagement ? (item.engagement.comments || 0) : 0}
+                                     👁️ ${item.engagement ? (item.engagement.views || 0) : 0} |
+                                     采集时间: ${new Date(item.crawled_at).toLocaleString('zh-CN')}
+                                 </div>
+                             </div>
+                        </div>
+                        <button onclick="toggleRawData(this)" class="expand-btn">显示原始数据</button>
+                        <pre style="display: none;">${JSON.stringify(item, null, 2)}</pre>
                     </div>
                 `;
                 
                 dataList.appendChild(itemDiv);
             });
+        }
+        
+        function toggleRawData(btn) {
+            const pre = btn.nextElementSibling;
+            if (pre.style.display === 'none') {
+                pre.style.display = 'block';
+                btn.textContent = '隐藏原始数据';
+            } else {
+                pre.style.display = 'none';
+                btn.textContent = '显示原始数据';
+            }
+        }
+        
+        // 全选/反选
+        function toggleSelectAll() {
+            const isChecked = document.getElementById('select-all').checked;
+            document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = isChecked);
+            updateSelection();
+        }
+
+        // 更新选择状态
+        function updateSelection() {
+            const count = document.querySelectorAll('.item-checkbox:checked').length;
+            const btn = document.getElementById('batch-delete-btn');
+            const countSpan = document.getElementById('selected-count');
+            
+            if (count > 0) {
+                btn.style.display = 'inline-block';
+                btn.textContent = `批量删除 (${count})`;
+                countSpan.textContent = `已选 ${count} 项`;
+            } else {
+                btn.style.display = 'none';
+                countSpan.textContent = '';
+            }
+        }
+
+        // 删除单个项目
+        async function deleteItem(id) {
+            if(!confirm('确定要删除这条数据吗？此操作不可恢复！')) return;
+            await performDelete([id]);
+        }
+
+        // 批量删除
+        async function deleteSelected() {
+            const ids = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+            if(ids.length === 0) return;
+            
+            if(!confirm(`确定要删除选中的 ${ids.length} 条数据吗？此操作不可恢复！`)) return;
+            await performDelete(ids);
+        }
+
+        // 执行删除操作
+        async function performDelete(ids) {
+            try {
+                const response = await fetch(`/api/v1/brands/${brandId}/data/delete-batch`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ids: ids})
+                });
+                const result = await response.json();
+                
+                if(result.code === 200) {
+                    // 显示简单的成功提示，不使用alert打断流程
+                    const deletedCount = result.data.deleted_count;
+                    const message = document.createElement('div');
+                    message.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: #4caf50;
+                        color: white;
+                        padding: 15px 25px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                        z-index: 10000;
+                        animation: slideIn 0.3s;
+                    `;
+                    message.textContent = `成功删除 ${deletedCount} 条数据`;
+                    document.body.appendChild(message);
+                    
+                    setTimeout(() => {
+                        message.remove();
+                    }, 3000);
+
+                    // 重新加载数据
+                    loadData(currentPage);
+                    loadStats();
+                } else {
+                    alert('删除失败: ' + (result.message || '未知错误'));
+                }
+            } catch(e) {
+                console.error('删除请求异常:', e);
+                alert('删除失败: ' + e.message);
+            }
         }
         
         // 更新分页
@@ -407,8 +687,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-

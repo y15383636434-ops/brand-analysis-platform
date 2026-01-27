@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分析结果 - {{ platform_name }}</title>
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -41,73 +43,159 @@
         
         .section {
             margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            padding: 25px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
         }
         
         .section h2 {
-            color: #333;
-            margin-bottom: 15px;
+            color: #1e293b;
+            margin-bottom: 20px;
             font-size: 20px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+            font-weight: 600;
+            border-bottom: none;
+            padding-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to bottom, #667eea, #764ba2);
+            border-radius: 2px;
         }
         
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            gap: 20px;
             margin-bottom: 20px;
         }
         
         .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
+            background: #f8fafc;
+            padding: 24px;
+            border-radius: 12px;
             text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: none;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-color: #cbd5e1;
         }
         
         .stat-value {
-            font-size: 32px;
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 5px;
+            font-size: 36px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
         }
         
         .stat-label {
             font-size: 14px;
-            color: #666;
+            color: #64748b;
+            font-weight: 500;
         }
         
         .keyword-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
         }
         
         .keyword-item {
-            background: white;
-            padding: 8px 15px;
-            border-radius: 20px;
+            background: #f1f5f9;
+            padding: 8px 16px;
+            border-radius: 50px;
             font-size: 14px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            color: #334155;
+            box-shadow: none;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .keyword-item:hover {
+            background: white;
+            border-color: #667eea;
+            color: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
         }
         
         .keyword-weight {
-            color: #667eea;
-            font-weight: 600;
-            margin-left: 5px;
+            color: #64748b;
+            font-weight: 500;
+            margin-left: 6px;
+            font-size: 12px;
+            opacity: 0.8;
         }
         
         .insights {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 12px;
+            line-height: 1.8;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* 优化AI洞察样式 */
+        .insight-card {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            line-height: 1.8;
-            white-space: pre-wrap;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 15px;
         }
+
+        .insight-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 12px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .insight-content {
+            color: #475569;
+            font-size: 15px;
+        }
+
+        .insight-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .insight-list li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 10px;
+            color: #475569;
+        }
+
+        .insight-list li::before {
+            content: '•';
+            position: absolute;
+            left: 8px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
         
         .nav-links {
             margin-top: 30px;
@@ -157,11 +245,24 @@
     </div>
     
     <script>
-        const platform = '{{ platform }}';
+        // 获取URL参数
         const urlParams = new URLSearchParams(window.location.search);
-        const brandId = urlParams.get('brand_id');
+        // 使用Jinja2输出，但添加默认值处理，避免输出 None
+        const platform = "{{ platform or '' }}"; 
+        const serverBrandId = "{{ brand_id or '' }}";
+        const brandId = serverBrandId || urlParams.get('brand_id');
+        const resultId = urlParams.get('result_id');
+
+        console.log('Current Platform:', platform);
+        console.log('Current Brand ID:', brandId);
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 加载历史记录列表 (也会根据 URL 参数加载对应内容)
+            loadHistoryList();
+        });
         
-        async function loadResults() {
+        async function loadHistoryList() {
             const container = document.getElementById('resultContainer');
             
             try {
@@ -172,39 +273,54 @@
                 }
                 
                 // 否则加载旧的分析结果
-                const url = platform 
-                    ? `/api/v1/data-analysis/result/list?platform=${platform}`
-                    : '/api/v1/data-analysis/result/list';
+                let url = '/api/v1/data-analysis/result/list';
+                
+                // 优先使用 result_id 查询
+                if (resultId) {
+                    url += `?result_id=${resultId}`;
+                } else if (platform && platform !== 'None' && platform !== 'null') {
+                    url += `?platform=${platform}`;
+                }
+                
+                console.log('Fetching results from:', url); // Debug log
                 
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                if (data.success && data.results.length > 0) {
+                if (data.success && data.results && data.results.length > 0) {
                     // 显示最新的结果
                     const latestResult = data.results[0];
-                    const result = latestResult.result;
+                    // 兼容处理：确保 result 对象存在
+                    const result = latestResult.result || {};
+                    const processedData = result.processed_data || { total_items: 0, total_texts: 0, total_comments: 0, file_count: 0 };
+                    
+                    console.log('加载到最新分析结果:', latestResult);
                     
                     let html = '';
                     
+                    // 显示创建时间
+                    const createdDate = new Date(latestResult.created_at).toLocaleString();
+                    html += `<div style="text-align: right; color: #666; margin-bottom: 20px; font-size: 14px;">生成时间: ${createdDate}</div>`;
+
                     // 处理数据统计
                     html += `
                         <div class="section">
                             <h2>📈 数据统计</h2>
                             <div class="stats-grid">
                                 <div class="stat-card">
-                                    <div class="stat-value">${result.processed_data.total_items}</div>
+                                    <div class="stat-value">${processedData.total_items}</div>
                                     <div class="stat-label">总数据量</div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-value">${result.processed_data.total_texts}</div>
+                                    <div class="stat-value">${processedData.total_texts}</div>
                                     <div class="stat-label">文本数量</div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-value">${result.processed_data.total_comments}</div>
+                                    <div class="stat-value">${processedData.total_comments}</div>
                                     <div class="stat-label">评论数量</div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-value">${result.processed_data.file_count}</div>
+                                    <div class="stat-value">${processedData.file_count}</div>
                                     <div class="stat-label">文件数量</div>
                                 </div>
                             </div>
@@ -262,20 +378,143 @@
                     
                     // LLM深度分析
                     if (result.llm_insights && result.llm_insights.insights) {
+                        const insights = result.llm_insights.insights;
+                        let insightsHtml = '';
+                        
+                        console.log('LLM Insights Data:', insights); // Debug log
+
+                        if (typeof insights === 'object' && insights !== null) {
+                            // 总体评价 (兼容 summary, overview 或直接作为字符串)
+                            let summaryText = insights.summary || insights.overview;
+                            if (!summaryText && typeof insights === 'string') {
+                                summaryText = insights;
+                            }
+                            
+                            insightsHtml = `
+                                <div class="insight-card">
+                                    <div class="insight-title">
+                                        <span style="font-size: 20px;">💡</span> 总体评价
+                                    </div>
+                                    <div class="insight-content">
+                                        ${summaryText || '暂无摘要'}
+                                    </div>
+                                </div>
+                            `;
+
+                            // 市场表现 (SWOT中的S/W)
+                            if (insights.market_performance) {
+                                insightsHtml += `
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 15px;">
+                                        <div class="insight-card" style="margin-bottom: 0;">
+                                            <div class="insight-title" style="color: #059669;">
+                                                <span style="font-size: 20px;">💪</span> 品牌优势
+                                            </div>
+                                            <ul class="insight-list">
+                                                ${(insights.market_performance.strengths || []).map(item => `<li>${item}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                        <div class="insight-card" style="margin-bottom: 0;">
+                                            <div class="insight-title" style="color: #dc2626;">
+                                                <span style="font-size: 20px;">⚠️</span> 品牌劣势
+                                            </div>
+                                            <ul class="insight-list">
+                                                ${(insights.market_performance.weaknesses || []).map(item => `<li>${item}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            // 用户感知
+                            if (insights.user_perception) {
+                                insightsHtml += `
+                                    <div class="insight-card">
+                                        <div class="insight-title">
+                                            <span style="font-size: 20px;">🗣️</span> 用户感知分析
+                                        </div>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
+                                            <div>
+                                                <h4 style="font-size: 15px; color: #d97706; margin-bottom: 12px; font-weight: 600;">👍 用户好评点</h4>
+                                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                                    ${(insights.user_perception.positive_points || []).map(item => `<span style="background: #fffbeb; color: #d97706; padding: 6px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #fcd34d;">${item}</span>`).join('')}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 style="font-size: 15px; color: #ef4444; margin-bottom: 12px; font-weight: 600;">👎 用户痛点/吐槽</h4>
+                                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                                    ${(insights.user_perception.pain_points || insights.pain_points || []).map(item => `<span style="background: #fef2f2; color: #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #fca5a5;">${item}</span>`).join('')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            } else if (insights.pain_points) {
+                                // 兼容旧格式
+                                insightsHtml += `
+                                    <div class="insight-card">
+                                        <div class="insight-title">
+                                            <span style="font-size: 20px;">😣</span> 用户痛点
+                                        </div>
+                                        <ul class="insight-list">
+                                            ${insights.pain_points.map(item => `<li>${item}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+
+                            // 机会与建议
+                            insightsHtml += `
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                                    <div class="insight-card" style="margin-bottom: 0; border-top: 4px solid #0ea5e9;">
+                                        <div class="insight-title" style="color: #0284c7;">
+                                            <span style="font-size: 20px;">🚀</span> 市场机会
+                                        </div>
+                                        <ul class="insight-list">
+                                            ${(insights.market_opportunities || []).map(item => `<li>${item}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                    <div class="insight-card" style="margin-bottom: 0; border-top: 4px solid #8b5cf6;">
+                                        <div class="insight-title" style="color: #7c3aed;">
+                                            <span style="font-size: 20px;">💡</span> 营销建议
+                                        </div>
+                                        <ul class="insight-list">
+                                            ${(insights.marketing_suggestions || []).map(item => `<li>${item}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // 纯文本格式
+                            insightsHtml = `<div class="insight-card"><div class="insight-content" style="white-space: pre-wrap;">${insights}</div></div>`;
+                        }
+
                         html += `
                             <div class="section">
-                                <h2>🤖 AI深度分析</h2>
-                                <div class="insights">${result.llm_insights.insights}</div>
-                                ${result.llm_insights.model ? `<p style="margin-top: 10px; color: #666; font-size: 12px;">使用模型: ${result.llm_insights.model}</p>` : ''}
+                                <h2>🤖 AI深度洞察报告</h2>
+                                <div style="background: #f8fafc; padding: 20px; border-radius: 12px;">${insightsHtml}</div>
+                                ${result.llm_insights.model ? `<p style="margin-top: 15px; color: #94a3b8; font-size: 12px; text-align: right;">生成模型: ${result.llm_insights.model}</p>` : ''}
                             </div>
                         `;
                     }
                     
                     container.innerHTML = html;
                 } else {
-                    container.innerHTML = '<div class="empty">暂无分析结果</div>';
+                    console.log('未找到分析结果:', data);
+                    container.innerHTML = `
+                        <div class="empty">
+                            <h3>暂无分析结果</h3>
+                            <p>数据库中没有找到相关的分析记录。</p>
+                            <p>请返回数据分析页面重新生成报告。</p>
+                            <div style="margin-top: 20px;">
+                                <a href="/api/v1/data-analysis" class="btn-primary" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px;">
+                                    去生成分析报告
+                                </a>
+                            </div>
+                        </div>
+                    `;
                 }
             } catch (error) {
+                console.error('加载结果出错:', error);
                 container.innerHTML = `<div class="empty">加载失败: ${error.message}</div>`;
             }
         }
@@ -509,7 +748,14 @@
                 `;
                 
                 // 情感分析图表
-                if (charts.sentiment_pie) {
+                if (result.sentiment_analysis && result.sentiment_analysis.distribution) {
+                    html += `
+                        <div class="section">
+                            <h2>💭 情感分析分布</h2>
+                            <div id="chartSentiment" style="width: 100%; height: 400px; margin-top: 20px;"></div>
+                        </div>
+                    `;
+                } else if (charts.sentiment_pie) {
                     html += `
                         <div class="section">
                             <h2>💭 情感分析分布</h2>
@@ -521,7 +767,24 @@
                 }
                 
                 // 平台对比图
-                if (charts.sentiment_by_platform) {
+                // 即使只有一个平台，也显示图表，方便查看
+                if (result.platform_statistics && Object.keys(result.platform_statistics).length >= 1) {
+                    html += `
+                        <div class="section">
+                            <h2>📱 平台数据分布</h2>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+                                <div>
+                                    <h3 style="text-align: center; margin-bottom: 15px; color: #64748b; font-size: 16px;">平台内容数量占比</h3>
+                                    <div id="chartPlatform" style="width: 100%; height: 350px;"></div>
+                                </div>
+                                <div>
+                                    <h3 style="text-align: center; margin-bottom: 15px; color: #64748b; font-size: 16px;">各平台数据量统计</h3>
+                                    <div id="chartPlatformBar" style="width: 100%; height: 350px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (charts.sentiment_by_platform) {
                     html += `
                         <div class="section">
                             <h2>📱 各平台情感对比</h2>
@@ -532,7 +795,7 @@
                     `;
                 }
                 
-                // 趋势图
+                // 趋势图 (目前API暂未返回趋势数据，预留)
                 if (charts.sentiment_trend) {
                     html += `
                         <div class="section">
@@ -549,6 +812,7 @@
                     html += `
                         <div class="section">
                             <h2>🔑 关键词分析</h2>
+                            <div id="chartKeywords" style="width: 100%; height: 400px; margin-top: 20px;"></div>
                     `;
                     if (charts.keywords_bar) {
                         html += `
@@ -645,6 +909,41 @@
                     `;
                 }
                 
+                // 互动数据分析
+                if (result.interaction_statistics) {
+                    const stats = result.interaction_statistics;
+                    html += `
+                        <div class="section">
+                            <h2>🔥 互动数据分析</h2>
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-value">${stats.total_likes || 0}</div>
+                                    <div class="stat-label">总点赞</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${stats.total_comments || 0}</div>
+                                    <div class="stat-label">总评论</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">${stats.total_shares || 0}</div>
+                                    <div class="stat-label">总分享</div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 20px;">
+                                <div>
+                                    <h3 style="text-align: center; margin-bottom: 15px; color: #666;">互动构成</h3>
+                                    <div id="chartInteractionPie" style="width: 100%; height: 350px;"></div>
+                                </div>
+                                <div>
+                                    <h3 style="text-align: center; margin-bottom: 15px; color: #666;">各平台互动对比</h3>
+                                    <div id="chartInteractionBar" style="width: 100%; height: 350px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 // 操作按钮
                 html += `
                     <div class="section" style="text-align: center; padding: 20px;">
@@ -653,6 +952,9 @@
                         </a>
                         <a href="/api/v1/brands/${brandId}/reports?format=pdf" style="display: inline-block; padding: 12px 24px; margin: 0 10px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
                             下载PDF报告
+                        </a>
+                        <a href="/api/v1/brands/${brandId}/reports?format=md" target="_blank" style="display: inline-block; padding: 12px 24px; margin: 0 10px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            下载MD报告
                         </a>
                     </div>
                 `;
@@ -663,6 +965,11 @@
                 if (analysisData.brand_name) {
                     document.querySelector('h1').textContent = `${analysisData.brand_name} - 分析结果`;
                 }
+
+                // 渲染图表
+                setTimeout(() => {
+                    initCharts(result);
+                }, 100);
                 
             } catch (error) {
                 console.error('加载品牌分析失败:', error);
@@ -738,6 +1045,8 @@
         async function startAnalysis(brandId) {
             const btn = document.getElementById('startAnalysisBtn');
             const statusDiv = document.getElementById('analysisStatus');
+            const typeSelect = document.getElementById('analysisTypeSelect');
+            const analysisType = typeSelect ? typeSelect.value : 'comprehensive';
             
             if (!btn || !statusDiv) return;
             
@@ -753,7 +1062,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        analysis_type: 'full',
+                        analysis_type: analysisType,
                         include_sentiment: true,
                         include_topics: true,
                         include_keywords: true,
@@ -802,9 +1111,164 @@
                 window.analysisPollingIntervals = {};
             }
         });
-        
-        // 页面加载时获取结果
-        loadResults();
+
+        // ECharts 图表渲染函数
+        function initCharts(result) {
+            // 情感分析饼图
+            if (document.getElementById('chartSentiment') && result.sentiment_analysis) {
+                const chart = echarts.init(document.getElementById('chartSentiment'));
+                const sentiment = result.sentiment_analysis;
+                chart.setOption({
+                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                    legend: { bottom: '0%' },
+                    color: ['#4CAF50', '#F44336', '#FFC107'],
+                    series: [{
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: false, position: 'center' },
+                        emphasis: { label: { show: true, fontSize: 18, fontWeight: 'bold' } },
+                        data: [
+                            { value: sentiment.positive_count, name: '正面' },
+                            { value: sentiment.negative_count, name: '负面' },
+                            { value: sentiment.neutral_count, name: '中性' }
+                        ]
+                    }]
+                });
+            }
+
+            // 平台数据分布饼图
+            if (document.getElementById('chartPlatform') && result.platform_statistics) {
+                const chart = echarts.init(document.getElementById('chartPlatform'));
+                const platformData = Object.entries(result.platform_statistics).map(([key, value]) => ({
+                    name: formatPlatform(key),
+                    value: value.total_texts
+                }));
+                
+                chart.setOption({
+                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                    legend: { bottom: '0%' },
+                    series: [{
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                        data: platformData,
+                        label: { show: true, position: 'inside', formatter: '{b}' },
+                        emphasis: { label: { show: true, fontSize: 18, fontWeight: 'bold' } }
+                    }]
+                });
+            }
+            
+            // 平台数据柱状图
+            if (document.getElementById('chartPlatformBar') && result.platform_statistics) {
+                const chart = echarts.init(document.getElementById('chartPlatformBar'));
+                const platforms = Object.keys(result.platform_statistics);
+                const values = platforms.map(p => result.platform_statistics[p].total_texts);
+                
+                chart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'category', data: platforms.map(formatPlatform), axisLabel: { interval: 0, rotate: 30 } },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        data: values,
+                        type: 'bar',
+                        itemStyle: { color: '#667eea', borderRadius: [4, 4, 0, 0] },
+                        barWidth: '50%'
+                    }]
+                });
+            }
+
+            // 关键词柱状图
+            if (document.getElementById('chartKeywords') && result.keywords && result.keywords.length > 0) {
+                const chart = echarts.init(document.getElementById('chartKeywords'));
+                const topKeywords = result.keywords.slice(0, 15);
+                chart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'value' },
+                    yAxis: { type: 'category', data: topKeywords.map(k => k.keyword).reverse() },
+                    series: [{
+                        type: 'bar',
+                        data: topKeywords.map(k => k.weight).reverse(),
+                        itemStyle: { color: '#667eea', borderRadius: [0, 4, 4, 0] },
+                        barWidth: '60%'
+                    }]
+                });
+            }
+
+            // 互动构成饼图
+            if (document.getElementById('chartInteractionPie') && result.interaction_statistics) {
+                const chart = echarts.init(document.getElementById('chartInteractionPie'));
+                const stats = result.interaction_statistics;
+                chart.setOption({
+                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                    legend: { bottom: '0%' },
+                    series: [{
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: true, position: 'inside', formatter: '{b}: {d}%' },
+                        emphasis: { label: { show: true, fontSize: 18, fontWeight: 'bold' } },
+                        data: [
+                            { value: stats.total_likes, name: '点赞' },
+                            { value: stats.total_comments, name: '评论' },
+                            { value: stats.total_shares, name: '分享' }
+                        ]
+                    }]
+                });
+            }
+
+            // 各平台互动对比柱状图
+            if (document.getElementById('chartInteractionBar') && result.interaction_statistics && result.interaction_statistics.by_platform) {
+                const chart = echarts.init(document.getElementById('chartInteractionBar'));
+                const byPlatform = result.interaction_statistics.by_platform;
+                const platforms = Object.keys(byPlatform);
+                
+                const likes = platforms.map(p => byPlatform[p].likes);
+                const comments = platforms.map(p => byPlatform[p].comments);
+                const shares = platforms.map(p => byPlatform[p].shares);
+                
+                chart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    legend: { bottom: '0%' },
+                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+                    xAxis: { 
+                        type: 'category', 
+                        data: platforms.map(p => formatPlatform(p)),
+                        axisLabel: { interval: 0, rotate: 30 }
+                    },
+                    yAxis: { type: 'value' },
+                    series: [
+                        { name: '点赞', type: 'bar', data: likes, emphasis: { focus: 'series' } },
+                        { name: '评论', type: 'bar', data: comments, emphasis: { focus: 'series' } },
+                        { name: '分享', type: 'bar', data: shares, emphasis: { focus: 'series' } }
+                    ]
+                });
+            }
+
+            // 窗口大小改变时重绘图表
+            window.addEventListener('resize', () => {
+                echarts.getInstanceByDom(document.getElementById('chartSentiment'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartPlatform'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartPlatformBar'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartKeywords'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartInteractionPie'))?.resize();
+                echarts.getInstanceByDom(document.getElementById('chartInteractionBar'))?.resize();
+            });
+        }
+
+        function formatPlatform(key) {
+            const map = { 
+                'xhs': '小红书', 'douyin': '抖音', 'weibo': '微博', 
+                'zhihu': '知乎', 'bilibili': 'B站', 'kuaishou': '快手',
+                'tieba': '贴吧'
+            };
+            return map[key] || key;
+        }
     </script>
 </body>
 </html>

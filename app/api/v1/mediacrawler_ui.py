@@ -14,10 +14,12 @@ import json
 import os
 import threading
 import time
+import shutil
 from pathlib import Path
 from datetime import datetime
 from loguru import logger
 from app.services.script_generator import ScriptGenerator
+from config import settings
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent.parent.parent
@@ -115,6 +117,82 @@ def get_actual_data_dir(mediacrawler_path: Path, platform_code: str) -> Path:
     # 返回标准目录（即使不存在，让调用者处理）
     return standard_dir
 
+def sync_media_files_for_platform(platform: str):
+    """
+    同步指定平台的媒体文件到项目数据目录
+    
+    Args:
+        platform: 平台代码 (如 xhs, douyin)
+    """
+    if not settings.MEDIACRAWLER_PATH:
+        logger.warning("未配置 MEDIACRAWLER_PATH，无法同步媒体文件")
+        return
+        
+    mediacrawler_path = Path(settings.MEDIACRAWLER_PATH)
+    if not mediacrawler_path.is_absolute():
+        mediacrawler_path = (project_root / settings.MEDIACRAWLER_PATH).resolve()
+        
+    source_dir = mediacrawler_path / "data" / "crawled_data"
+    target_dir = settings.DATA_DIR / "crawled_data"
+    
+    if not source_dir.exists():
+        logger.warning(f"MediaCrawler 数据目录不存在: {source_dir}")
+        return
+        
+    # 获取实际的目录名 (platform 可能和目录名不一致)
+    # 比如 platform 是 'dy'，但目录名是 'douyin'
+    # 先尝试直接匹配
+    platform_dir = source_dir / platform
+    if not platform_dir.exists():
+        # 尝试映射
+        mapped_name = MEDIACRAWLER_DATA_DIR_MAP.get(platform)
+        if mapped_name:
+            platform_dir = source_dir / mapped_name
+            
+        # 如果还没找到，尝试特定映射
+        if not platform_dir.exists():
+            if platform == 'dy': platform_dir = source_dir / 'douyin'
+            elif platform == 'ks': platform_dir = source_dir / 'kuaishou'
+            elif platform == 'wb': platform_dir = source_dir / 'weibo'
+            elif platform == 'bili': platform_dir = source_dir / 'bilibili'
+            
+    if not platform_dir.exists():
+        logger.warning(f"未找到平台 {platform} 的数据目录: {platform_dir}")
+        return
+        
+    platform_name = platform_dir.name # 使用实际存在的目录名
+    
+    content_dirs = [d for d in platform_dir.iterdir() if d.is_dir()]
+    logger.info(f"正在同步平台 {platform_name} 的文件，发现 {len(content_dirs)} 个内容目录")
+    
+    count = 0
+    for content_dir in content_dirs:
+        content_id = content_dir.name
+        
+        # 构建目标目录
+        target_content_dir = target_dir / platform_name / content_id
+        target_content_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 复制文件
+        for file_path in content_dir.iterdir():
+            if file_path.is_file():
+                target_file = target_content_dir / file_path.name
+                
+                should_copy = False
+                if not target_file.exists():
+                    should_copy = True
+                elif target_file.stat().st_size != file_path.stat().st_size:
+                    should_copy = True
+                    
+                if should_copy:
+                    try:
+                        shutil.copy2(file_path, target_file)
+                        count += 1
+                    except Exception as e:
+                        logger.warning(f"复制文件失败 {file_path}: {e}")
+                        
+    logger.info(f"同步完成，共复制 {count} 个文件")
+
 # 平台特性配置
 PLATFORM_FEATURES = {
     "xhs": {
@@ -122,7 +200,7 @@ PLATFORM_FEATURES = {
         "supports_comments": True,    # 支持评论
     },
     "douyin": {
-        "supports_note_type": False,
+        "supports_note_type": True,   # 支持笔记类型选择 (实测支持 video/image)
         "supports_comments": True,
     },
     "weibo": {
@@ -138,7 +216,7 @@ PLATFORM_FEATURES = {
         "supports_comments": True,
     },
     "kuaishou": {
-        "supports_note_type": False,
+        "supports_note_type": True,   # 快手也支持视频/图文
         "supports_comments": True,
     },
     "tieba": {
@@ -239,6 +317,9 @@ async def start_mediacrawler(
         platform = form_data.get("platform", "")
         keywords = form_data.get("keywords", "").strip()
         
+        crawl_type = form_data.get("crawl_type", "search")
+        target_url = form_data.get("target_url", "").strip()
+        
         # 安全地转换max_items
         try:
             max_items = int(form_data.get("max_items", 10))
@@ -246,7 +327,7 @@ async def start_mediacrawler(
             max_items = 10
         
         note_type = form_data.get("note_type", "all")
-        include_comments = form_data.get("include_comments", "true")
+        include_comments = form_data.get("include_comments", "false")
         include_sub_comments = form_data.get("include_sub_comments", "false")
     except Exception as e:
         logger.error(f"解析表单数据失败: {e}", exc_info=True)
@@ -256,14 +337,20 @@ async def start_mediacrawler(
         )
     
     # 验证必填参数
-    if not keywords:
+    if crawl_type == "search" and not keywords:
         raise HTTPException(
             status_code=400,
             detail="关键词（keywords）不能为空"
         )
     
+    if crawl_type in ["creator", "detail"] and not target_url:
+        raise HTTPException(
+            status_code=400,
+            detail="目标URL（target_url）不能为空"
+        )
+    
     # 记录接收到的参数（用于调试）
-    logger.info(f"收到请求参数: platforms={platforms}, platform={platform}, keywords={keywords}")
+    logger.info(f"收到请求参数: platforms={platforms}, platform={platform}, keywords={keywords}, crawl_type={crawl_type}, target_url={target_url}")
     
     # 解析平台列表：优先使用platforms，如果没有则使用platform（兼容旧版本）
     platform_str = (platforms or platform or "").strip()
@@ -305,11 +392,17 @@ async def start_mediacrawler(
             "error": f"无效的笔记类型: {note_type}"
         })
     
-    # 验证关键词
-    if not keywords.strip():
+    # 验证关键词/URL
+    if crawl_type == "search" and not keywords.strip():
         return JSONResponse({
             "success": False,
             "error": "关键词不能为空"
+        })
+    
+    if crawl_type in ["creator", "detail"] and not target_url.strip():
+        return JSONResponse({
+            "success": False,
+            "error": "目标URL不能为空"
         })
     
     # 检查MediaCrawler目录
@@ -369,7 +462,9 @@ async def start_mediacrawler(
                     max_items=max_items,
                     note_type=platform_note_type,
                     include_comments=include_comments_bool,
-                    include_sub_comments=include_sub_comments_bool
+                    include_sub_comments=include_sub_comments_bool,
+                    crawl_type=crawl_type,
+                    target_url=target_url
                 )
                 
                 # 验证脚本文件是否存在
@@ -386,6 +481,11 @@ async def start_mediacrawler(
                     str(script_path.resolve())
                 ]
                 
+                # 如果不是第一个任务，添加延时以避免资源竞争（特别是启动浏览器时）
+                if process_ids:
+                    logger.info("等待 3 秒后启动下一个任务，以避免资源竞争...")
+                    time.sleep(3)
+                
                 # 执行命令（异步执行，不阻塞）
                 logger.info(f"执行命令: {' '.join(cmd)}")
                 logger.info(f"工作目录: {work_dir}")
@@ -396,10 +496,7 @@ async def start_mediacrawler(
                     cwd=work_dir,
                     stdout=subprocess.PIPE,  # 捕获标准输出
                     stderr=subprocess.STDOUT,  # 将错误输出合并到标准输出
-                    text=True,
-                    encoding='utf-8',
                     bufsize=1,  # 行缓冲
-                    errors='replace',  # 处理编码错误
                     env=env  # 使用修改后的环境变量
                 )
                 
@@ -420,6 +517,8 @@ async def start_mediacrawler(
                         "platform": platform,
                         "platforms": platform_list,  # 保存所有平台列表
                         "keywords": keywords,
+                        "crawl_type": crawl_type,
+                        "target_url": target_url,
                         "max_items": max_items,
                         "script_path": str(script_path)  # 保存脚本路径
                     }
@@ -450,10 +549,19 @@ async def start_mediacrawler(
                                         break
                                     
                                     try:
-                                        line = proc.stdout.readline()
-                                        if not line:
+                                        line_bytes = proc.stdout.readline()
+                                        if not line_bytes:
                                             time.sleep(0.1)
                                             continue
+                                        # 手动解码，处理可能的编码错误
+                                        try:
+                                            line = line_bytes.decode('utf-8')
+                                        except UnicodeDecodeError:
+                                            try:
+                                                line = line_bytes.decode('gbk')
+                                            except UnicodeDecodeError:
+                                                line = line_bytes.decode('utf-8', errors='replace')
+                                                
                                     except (ValueError, OSError) as e:
                                         logger.debug(f"[进程{proc_id}] 读取输出时出错: {e}")
                                         if proc.poll() is not None:
@@ -515,6 +623,15 @@ async def start_mediacrawler(
                             returncode = proc.wait()
                             logger.info(f"[进程{proc_id}] 进程已结束，返回码: {returncode}")
                             
+                            # 任务成功结束后，自动同步媒体文件
+                            if returncode == 0:
+                                try:
+                                    logger.info(f"[进程{proc_id}] 开始同步媒体文件...")
+                                    sync_media_files_for_platform(plat)
+                                    logger.info(f"[进程{proc_id}] 媒体文件同步完成")
+                                except Exception as e:
+                                    logger.error(f"[进程{proc_id}] 同步媒体文件失败: {e}")
+                            
                             with process_lock:
                                 if proc_id in process_outputs:
                                     current_status = process_outputs[proc_id].get("status")
@@ -553,7 +670,7 @@ async def start_mediacrawler(
                 "error": "未能启动任何爬取任务"
             }, status_code=500)
         
-        logger.info(f"启动爬取任务: platforms={platform_list}, keywords={keywords}, max_items={max_items}")
+        logger.info(f"启动爬取任务: platforms={platform_list}, keywords={keywords}, max_items={max_items}, type={crawl_type}")
         logger.info(f"进程ID列表: {process_ids}")
         logger.info(f"提示: MediaCrawler会在浏览器中打开登录页面，二维码显示在浏览器中，不会弹出窗口")
         logger.info(f"提示: 登录状态会自动保存（SAVE_LOGIN_STATE=True），下次不需要重复登录")
@@ -567,6 +684,8 @@ async def start_mediacrawler(
             "platforms": platform_list,
             "platform_names": platform_names,
             "keywords": keywords,
+            "crawl_type": crawl_type,
+            "target_url": target_url,
             "max_items": max_items,
             "note_type": note_type,
             "include_comments": include_comments_bool,
@@ -596,6 +715,67 @@ async def start_mediacrawler(
             "success": False,
             "error": f"启动爬取任务失败: {str(e)}"
         }, status_code=500)
+
+
+@router.get("/mediacrawler/monitor", response_class=HTMLResponse)
+async def monitor_dashboard(request: Request):
+    """任务监控看板"""
+    # 整理进程数据
+    processes_info = {}
+    with process_lock:
+        # 按时间倒序排列
+        sorted_pids = sorted(
+            process_outputs.keys(), 
+            key=lambda pid: process_outputs[pid].get("started_at", ""), 
+            reverse=True
+        )
+        
+        for pid in sorted_pids:
+            p_data = process_outputs[pid]
+            platform_code = p_data.get("platform", "unknown")
+            processes_info[pid] = {
+                "status": p_data.get("status", "unknown"),
+                "platform": platform_code,
+                "platform_name": PLATFORM_MAP.get(platform_code, platform_code),
+                "keywords": p_data.get("keywords", ""),
+                "started_at": p_data.get("started_at", ""),
+                "max_items": p_data.get("max_items", 0)
+            }
+            
+    return templates.TemplateResponse("monitor_dashboard.html", {
+        "request": request,
+        "processes": processes_info
+    })
+
+
+@router.get("/mediacrawler/processes")
+async def get_processes():
+    """获取所有进程列表（API）"""
+    processes_list = []
+    with process_lock:
+        sorted_pids = sorted(
+            process_outputs.keys(), 
+            key=lambda pid: process_outputs[pid].get("started_at", ""), 
+            reverse=True
+        )
+        
+        for pid in sorted_pids:
+            p_data = process_outputs[pid]
+            platform_code = p_data.get("platform", "unknown")
+            processes_list.append({
+                "process_id": pid,
+                "status": p_data.get("status", "unknown"),
+                "platform": platform_code,
+                "platform_name": PLATFORM_MAP.get(platform_code, platform_code),
+                "keywords": p_data.get("keywords", ""),
+                "started_at": p_data.get("started_at", ""),
+                "monitor_url": f"/api/v1/mediacrawler/crawl/monitor/{pid}"
+            })
+            
+    return JSONResponse({
+        "success": True,
+        "processes": processes_list
+    })
 
 
 @router.get("/mediacrawler/crawl/monitor/{process_id}", response_class=HTMLResponse)
@@ -825,8 +1005,15 @@ async def list_json_files(
         if not data_dir.exists():
             continue
         
-        # 查找JSON文件
-        pattern = f"search_{data_type}_*.json"
+        # 查找JSON文件 (兼容旧格式 search_xxx 和新格式 platform_keyword_xxx)
+        # 旧格式: search_contents_xxx.json
+        # 新格式: xhs_keyword_contents_xxx.json
+        # 通用匹配: *_{data_type}_*.json
+        if data_type == "all":
+            pattern = "*.json"
+        else:
+            pattern = f"*_{data_type}_*.json"
+            
         json_files = list(data_dir.glob(pattern))
         
         for file_path in sorted(json_files, key=lambda x: x.stat().st_mtime, reverse=True):

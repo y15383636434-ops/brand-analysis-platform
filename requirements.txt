@@ -33,6 +33,7 @@ transformers
 torch
 jieba
 snownlp
+opencv-python-headless
 
 # 报告生成
 jinja2

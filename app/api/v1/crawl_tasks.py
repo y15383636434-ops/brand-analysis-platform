@@ -10,7 +10,7 @@ from loguru import logger
 
 from app.core.database import get_db
 from app.models.brand import Brand
-from app.models.crawl_task import CrawlTask, TaskStatus
+from app.models.crawl_task import CrawlTask, TaskStatus, CrawlType
 
 router = APIRouter()
 
@@ -18,17 +18,22 @@ router = APIRouter()
 # 请求模型
 class CrawlTaskCreate(BaseModel):
     platforms: List[str]
-    keywords: List[str]
+    keywords: Optional[List[str]] = None
+    crawl_type: str = "search"  # search/creator/detail
+    target_url: Optional[str] = None # 目标链接
     max_items: int = 100
     include_comments: bool = True
+    download_media: bool = True  # 新增字段，默认开启
 
 
 class CrawlTaskResponse(BaseModel):
     id: int
     brand_id: int
     platform: str
+    crawl_type: str
     status: str
     keyword: Optional[str]
+    target_url: Optional[str]
     total_items: int
     crawled_items: int
     progress: int
@@ -52,19 +57,46 @@ async def start_crawl(
     if not brand:
         raise HTTPException(status_code=404, detail="品牌不存在")
     
+    # 参数验证
+    if task_data.crawl_type == "search" and not task_data.keywords:
+         raise HTTPException(status_code=400, detail="关键词搜索模式必须提供关键词")
+    
+    if task_data.crawl_type in ["creator", "detail"] and not task_data.target_url:
+         raise HTTPException(status_code=400, detail=f"指定{task_data.crawl_type}模式必须提供目标链接")
+
     # 为每个平台创建爬虫任务
     tasks = []
-    for platform in task_data.platforms:
-        for keyword in task_data.keywords:
-            task = CrawlTask(
+    
+    # 如果是 search 模式，可能包含多个关键词
+    if task_data.crawl_type == "search":
+        for platform in task_data.platforms:
+            for keyword in task_data.keywords:
+                task = CrawlTask(
+                    brand_id=brand_id,
+                    platform=platform,
+                    crawl_type=CrawlType.SEARCH,
+                    keyword=keyword,
+                    max_items=task_data.max_items,
+                    download_media=1 if task_data.download_media else 0,
+                    status=TaskStatus.PENDING
+                )
+                db.add(task)
+                tasks.append(task)
+    else:
+        # 如果是 creator/detail 模式，通常只针对单一目标链接
+        # 如果有多个平台（虽然通常一个链接只对应一个平台），这里还是保留循环
+        for platform in task_data.platforms:
+             task = CrawlTask(
                 brand_id=brand_id,
                 platform=platform,
-                keyword=keyword,
+                crawl_type=CrawlType(task_data.crawl_type),
+                target_url=task_data.target_url,
                 max_items=task_data.max_items,
+                download_media=1 if task_data.download_media else 0,
                 status=TaskStatus.PENDING
             )
-            db.add(task)
-            tasks.append(task)
+             db.add(task)
+             tasks.append(task)
     
     db.commit()
     
@@ -122,15 +154,17 @@ async def get_crawl_tasks(
                     id=item.id,
                     brand_id=item.brand_id,
                     platform=item.platform,
+                    crawl_type=item.crawl_type.value if hasattr(item.crawl_type, "value") else str(item.crawl_type),
                     status=item.status.value,
                     keyword=item.keyword,
+                    target_url=item.target_url,
                     total_items=item.total_items,
                     crawled_items=item.crawled_items,
                     progress=item.progress,
                     created_at=item.created_at.isoformat(),
                     started_at=item.started_at.isoformat() if item.started_at else None,
                     completed_at=item.completed_at.isoformat() if item.completed_at else None
-                ).dict()
+                ).model_dump()
                 for item in items
             ],
             "total": total,
@@ -154,14 +188,15 @@ async def get_crawl_task(task_id: int, db: Session = Depends(get_db)):
             id=task.id,
             brand_id=task.brand_id,
             platform=task.platform,
+            crawl_type=task.crawl_type.value if hasattr(task.crawl_type, "value") else str(task.crawl_type),
             status=task.status.value,
             keyword=task.keyword,
+            target_url=task.target_url,
             total_items=task.total_items,
             crawled_items=task.crawled_items,
             progress=task.progress,
             created_at=task.created_at.isoformat(),
             started_at=task.started_at.isoformat() if task.started_at else None,
             completed_at=task.completed_at.isoformat() if task.completed_at else None
-        ).dict()
+        ).model_dump()
     }
-

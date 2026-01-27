@@ -3,12 +3,14 @@ FastAPI 主应用入口
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from loguru import logger
 import sys
 import os
+from pathlib import Path
 from datetime import datetime
 
 # 设置UTF-8编码（Windows）
@@ -23,12 +25,14 @@ if sys.platform == 'win32':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 from config import settings
-from app.api.v1 import brands, crawl_tasks, analysis_tasks, reports, data_viewer, crawler_ui, mediacrawler_ui, data_analysis, dashboard
+from app.api.v1 import brands, crawl_tasks, analysis_tasks, reports, data_viewer, crawler_ui, mediacrawler_ui, data_analysis, dashboard, media
 from app.core.database import init_db
 from app.core.logger import setup_logging
 
 # 配置日志
 logger = setup_logging()
+# Force reload trigger
+logger.info("Server reloading for configuration update")
 
 
 # ✅ 定义生命周期管理器 (替代 on_event)
@@ -108,10 +112,18 @@ async def lifespan(app: FastAPI):
     
     # 关闭数据库连接池、Redis连接等
     try:
-        from app.core.database import engine, mongo_client, redis_client
+        from app.core.database import engine, async_engine, mongo_client, redis_client
+        
+        # 关闭同步数据库连接
         if engine:
             engine.dispose()
-            logger.info("数据库连接池已关闭")
+            logger.info("同步数据库连接池已关闭")
+            
+        # 关闭异步数据库连接
+        if async_engine:
+            await async_engine.dispose()
+            logger.info("异步数据库连接池已关闭")
+            
         if mongo_client:
             mongo_client.close()
             logger.info("MongoDB连接已关闭")
@@ -141,6 +153,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 挂载静态文件目录
+# 1. 媒体数据目录 (爬取的图片/视频)
+# 优先使用 MediaCrawler 的数据目录，因为视频默认下载到那里
+# 同时确保项目自己的数据目录也被挂载，以防同步脚本已运行
+mediacrawler_path = settings.MEDIACRAWLER_PATH
+project_data_path = settings.DATA_DIR / "crawled_data"
+
+# 1.1 挂载 MediaCrawler 的数据目录
+if mediacrawler_path:
+    if mediacrawler_path.startswith("./") or mediacrawler_path.startswith(".\\"):
+        project_root = Path(__file__).resolve().parent.parent
+        mc_path = (project_root / mediacrawler_path.lstrip("./\\")).resolve()
+    else:
+        mc_path = Path(mediacrawler_path)
+    
+    mc_data_path = mc_path / "data" / "crawled_data"
+    if mc_data_path.exists():
+        logger.info(f"挂载 MediaCrawler 数据目录: {mc_data_path}")
+        app.mount("/media/mc", StaticFiles(directory=str(mc_data_path)), name="media_mc")
+
+# 1.2 挂载项目自己的数据目录 (同步后的文件)
+if not project_data_path.exists():
+    project_data_path.mkdir(parents=True, exist_ok=True)
+
+logger.info(f"挂载项目数据目录: {project_data_path}")
+app.mount("/media/local", StaticFiles(directory=str(project_data_path)), name="media_local")
+
+# 为了兼容旧代码，保留 /media 挂载，优先指向本地同步目录，如果为空则指向 MC 目录
+# 这样前端引用 /media/xxx 时能找到文件
+final_media_path = project_data_path
+if not any(project_data_path.iterdir()) and mediacrawler_path:
+     if mc_data_path.exists():
+         final_media_path = mc_data_path
+
+app.mount("/media", StaticFiles(directory=str(final_media_path)), name="media")
+
+# 2. 前端模板使用的静态资源 (CSS/JS)
+# 如果有 static 目录的话
+static_path = os.path.join(os.path.dirname(__file__), "..", "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
 # 注册路由 - HTML界面路由优先注册，避免与API路由冲突
 # 数据展示界面（HTML路由，需要优先注册）
 from app.api.v1 import data_display
@@ -157,6 +211,7 @@ app.include_router(mediacrawler_ui.router, prefix=settings.API_V1_PREFIX, tags=[
 app.include_router(data_analysis.router, prefix=settings.API_V1_PREFIX, tags=["数据分析"])
 
 # Dashboard统一控制台 - 放在最后注册，避免路由冲突
+app.include_router(media.router, prefix=settings.API_V1_PREFIX, tags=["媒体管理"])
 app.include_router(dashboard.router, prefix=settings.API_V1_PREFIX, tags=["统一控制台"])
 
 
@@ -172,8 +227,29 @@ async def health_check():
     """健康检查"""
     return {
         "status": "healthy",
-        "version": settings.PROJECT_VERSION
+        "version": settings.PROJECT_VERSION,
+        "mounts": {
+             "local": str(project_data_path),
+             "exists": project_data_path.exists()
+        }
     }
+
+
+@app.get("/.well-known/appspecific/com.chrome.devtools.json")
+async def chrome_devtools_config():
+    """
+    处理 Chrome DevTools 请求的 404 错误
+    这是一个浏览器尝试加载的配置文件，在开发环境中通常不存在，添加此路由以消除 404 日志噪音
+    """
+    return JSONResponse(content={}, status_code=200)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """
+    处理 favicon.ico 请求，防止 404 错误
+    """
+    return JSONResponse(content={}, status_code=200)
 
 
 @app.exception_handler(Exception)
@@ -254,4 +330,3 @@ if __name__ == "__main__":
         reload=settings.DEBUG,
         reload_excludes=["MediaCrawler/**", "crawl_scripts/**"] if settings.DEBUG else None
     )
-

@@ -149,6 +149,15 @@ class ReportService:
             if platform_stats:
                 charts["platform_distribution"] = self._generate_platform_distribution_chart(platform_stats)
             
+            # 6. 互动构成饼图
+            interaction_stats = analysis_result.get("interaction_statistics", {})
+            if interaction_stats and (interaction_stats.get("total_likes", 0) + interaction_stats.get("total_comments", 0) + interaction_stats.get("total_shares", 0) > 0):
+                charts["interaction_pie"] = self._generate_interaction_pie_chart(interaction_stats)
+
+            # 7. 平台互动对比图
+            if interaction_stats and interaction_stats.get("by_platform"):
+                charts["platform_interaction"] = self._generate_platform_interaction_bar_chart(interaction_stats["by_platform"])
+            
         except Exception as e:
             logger.error(f"图表生成失败: {e}", exc_info=True)
         
@@ -315,6 +324,72 @@ class ReportService:
         except Exception as e:
             logger.error(f"生成平台分布图失败: {e}")
             return ""
+
+    def _generate_interaction_pie_chart(self, interaction_stats: Dict[str, Any]) -> str:
+        """生成互动构成饼图"""
+        try:
+            labels = ["点赞", "评论", "分享"]
+            sizes = [
+                interaction_stats.get("total_likes", 0),
+                interaction_stats.get("total_comments", 0),
+                interaction_stats.get("total_shares", 0)
+            ]
+            
+            # 如果所有值都为0，返回空字符串
+            if sum(sizes) == 0:
+                return ""
+            
+            colors = ['#FF7043', '#42A5F5', '#66BB6A']
+            
+            fig, ax = plt.subplots(figsize=(8, 8))
+            ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+            ax.set_title('互动量构成分析', fontsize=16, fontweight='bold', pad=20)
+            
+            return self._fig_to_base64(fig)
+        except Exception as e:
+            logger.error(f"生成互动构成饼图失败: {e}")
+            return ""
+
+    def _generate_platform_interaction_bar_chart(self, platform_stats: Dict[str, Any]) -> str:
+        """生成各平台互动量对比图"""
+        try:
+            platforms = list(platform_stats.keys())
+            if not platforms:
+                return ""
+                
+            platform_names = {
+                "xhs": "小红书",
+                "douyin": "抖音",
+                "weibo": "微博",
+                "zhihu": "知乎",
+                "bilibili": "B站"
+            }
+            
+            likes = [platform_stats[p].get("likes", 0) for p in platforms]
+            comments = [platform_stats[p].get("comments", 0) for p in platforms]
+            shares = [platform_stats[p].get("shares", 0) for p in platforms]
+            
+            x = np.arange(len(platforms))
+            width = 0.25
+            
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.bar(x - width, likes, width, label='点赞', color='#FF7043')
+            ax.bar(x, comments, width, label='评论', color='#42A5F5')
+            ax.bar(x + width, shares, width, label='分享', color='#66BB6A')
+            
+            ax.set_xlabel('平台', fontsize=12)
+            ax.set_ylabel('数量', fontsize=12)
+            ax.set_title('各平台互动量对比', fontsize=16, fontweight='bold')
+            ax.set_xticks(x)
+            ax.set_xticklabels([platform_names.get(p, p) for p in platforms])
+            ax.legend()
+            ax.grid(axis='y', alpha=0.3)
+            
+            plt.tight_layout()
+            return self._fig_to_base64(fig)
+        except Exception as e:
+            logger.error(f"生成平台互动对比图失败: {e}")
+            return ""
     
     def _fig_to_base64(self, fig) -> str:
         """将matplotlib图形转换为base64编码的字符串"""
@@ -358,6 +433,140 @@ class ReportService:
             logger.error(f"HTML报表渲染失败: {e}", exc_info=True)
             # 如果模板不存在，返回一个简单的HTML
             return self._generate_simple_html(report_data, charts)
+            
+    def generate_markdown_report(
+        self,
+        report_data: Dict[str, Any],
+        charts: Dict[str, str] = None
+    ) -> str:
+        """
+        生成Markdown报表
+        
+        Args:
+            report_data: 报表数据
+            charts: 图表字典 (Markdown暂不支持直接嵌入Base64图片，通常忽略或仅保留占位符)
+            
+        Returns:
+            Markdown字符串
+        """
+        try:
+            brand_name = report_data.get("brand_name", "未知品牌")
+            generated_at = report_data.get("generated_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            analysis = report_data.get("analysis_result", {})
+            insights = analysis.get("llm_insights", {}).get("insights", {})
+            
+            # 兼容处理 insights 为字符串的情况
+            if isinstance(insights, str):
+                insights_text = insights
+                insights_struct = {}
+            else:
+                insights_text = insights.get("summary") or insights.get("overview", "暂无摘要")
+                insights_struct = insights
+            
+            md_lines = []
+            md_lines.append(f"# {brand_name} 品牌深度分析报告")
+            md_lines.append(f"**生成时间**: {generated_at}\n")
+            
+            md_lines.append("## 1. 📊 数据概览")
+            stats = analysis.get("text_statistics", {})
+            platform_stats = analysis.get("platform_statistics", {})
+            
+            md_lines.append(f"- **总数据量**: {stats.get('total_count', 0)} 条")
+            md_lines.append(f"- **覆盖平台**: {', '.join(platform_stats.keys())}")
+            
+            # 情感分布
+            sentiment = analysis.get("sentiment", {})
+            if sentiment.get("distribution"):
+                dist = sentiment["distribution"]
+                md_lines.append(f"- **情感倾向**: 正面 {dist.get('positive', 0)}% | 负面 {dist.get('negative', 0)}% | 中性 {dist.get('neutral', 0)}%")
+                md_lines.append(f"- **平均情感分**: {sentiment.get('avg_score', 0):.2f} (0-1)")
+            
+            md_lines.append("\n## 2. 🤖 AI 深度洞察")
+            
+            # 总体评价
+            md_lines.append("### 💡 总体评价")
+            md_lines.append(f"{insights_text}\n")
+            
+            # 结构化洞察
+            if insights_struct:
+                # 市场表现
+                if "market_performance" in insights_struct:
+                    perf = insights_struct["market_performance"]
+                    if perf.get("strengths"):
+                        md_lines.append("### 💪 品牌优势")
+                        for item in perf["strengths"]:
+                            md_lines.append(f"- {item}")
+                        md_lines.append("")
+                    if perf.get("weaknesses"):
+                        md_lines.append("### ⚠️ 品牌劣势")
+                        for item in perf["weaknesses"]:
+                            md_lines.append(f"- {item}")
+                        md_lines.append("")
+                
+                # 用户感知
+                if "user_perception" in insights_struct:
+                    user = insights_struct["user_perception"]
+                    if user.get("positive_points"):
+                        md_lines.append("### 👍 用户好评")
+                        for item in user["positive_points"]:
+                            md_lines.append(f"- {item}")
+                        md_lines.append("")
+                    
+                    pain_points = user.get("pain_points") or insights_struct.get("pain_points")
+                    if pain_points:
+                        md_lines.append("### 👎 用户痛点")
+                        for item in pain_points:
+                            md_lines.append(f"- {item}")
+                        md_lines.append("")
+                
+                # 机会与建议
+                if "market_opportunities" in insights_struct:
+                    md_lines.append("### 🚀 市场机会")
+                    for item in insights_struct["market_opportunities"]:
+                        md_lines.append(f"- {item}")
+                    md_lines.append("")
+                    
+                suggestions = insights_struct.get("marketing_suggestions") or insights_struct.get("suggestions")
+                if suggestions:
+                    md_lines.append("### 📝 营销建议")
+                    for item in suggestions:
+                        md_lines.append(f"- {item}")
+                    md_lines.append("")
+            
+            md_lines.append("\n## 3. 🔥 热门关键词")
+            keywords = analysis.get("keywords", [])
+            if keywords:
+                top_kw = [f"{k['keyword']}({k.get('weight', 0):.2f})" for k in keywords[:20]]
+                md_lines.append(", ".join(top_kw))
+            else:
+                md_lines.append("暂无关键词数据")
+            
+            md_lines.append("\n## 4. 🔥 热门互动内容 (Top 10)")
+            top_posts = analysis.get("top_posts", [])
+            if top_posts:
+                md_lines.append("| 标题 | 平台 | 互动分 | 情感 |")
+                md_lines.append("|---|---|---|---|")
+                for post in top_posts[:10]:
+                    title = (post.get("title") or post.get("content", "")[:20]).replace("|", "\|").replace("\n", " ")
+                    platform = post.get("platform", "unknown")
+                    score = post.get("score", 0)
+                    sentiment_label = "中性"
+                    if post.get("sentiment"):
+                        s = post["sentiment"].get("sentiment")
+                        if s == "positive": sentiment_label = "正面"
+                        elif s == "negative": sentiment_label = "负面"
+                    
+                    md_lines.append(f"| {title} | {platform} | {score} | {sentiment_label} |")
+            else:
+                md_lines.append("暂无热门内容")
+                
+            md_lines.append("\n---\n*本报告由 MediaCrawler AI 分析系统自动生成*")
+            
+            return "\n".join(md_lines)
+            
+        except Exception as e:
+            logger.error(f"Markdown报表生成失败: {e}", exc_info=True)
+            return f"# 报表生成失败\n\n错误信息: {str(e)}"
     
     def _generate_simple_html(self, report_data: Dict[str, Any], charts: Dict[str, str]) -> str:
         """生成简单的HTML报表（备用方案）"""

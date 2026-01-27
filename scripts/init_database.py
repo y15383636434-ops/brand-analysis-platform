@@ -37,7 +37,7 @@ def init_database():
     
     # 创建表
     from app.core.database import engine, Base
-    from app.models import Brand, CrawlTask, AnalysisTask, Report
+    from app.models import Brand, CrawlTask, AnalysisTask, Report, DataImportTask
     
     try:
         Base.metadata.create_all(bind=engine)

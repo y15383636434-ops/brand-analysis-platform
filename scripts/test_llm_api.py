@@ -130,7 +130,12 @@ async def test_ai_service():
                 analysis_type="comprehensive"
             )
             print(f"  使用的模型: {llm_result.get('model')}")
-            print(f"  分析结果: {llm_result.get('insights', '')[:100]}...")
+            insights = llm_result.get('insights', '')
+            if isinstance(insights, dict):
+                import json
+                print(f"  分析结果: {json.dumps(insights, ensure_ascii=False)[:100]}...")
+            else:
+                print(f"  分析结果: {str(insights)[:100]}...")
             print("  ✅ LLM分析正常")
             return True
         except Exception as e:

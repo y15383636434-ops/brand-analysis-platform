@@ -413,8 +413,24 @@
                 document.getElementById('platformFilter').value = currentPlatform;
                 loadData();
             } else {
-                document.getElementById('dataContainer').innerHTML = 
-                    '<div class="empty"><div class="empty-icon">📭</div><p>请先选择品牌查看数据</p><p><a href="/api/v1/brands" style="color: #667eea;">查看品牌列表</a></p></div>';
+                // 如果没有brandId，尝试加载第一个可用的品牌
+                fetch('/api/v1/brands?page=1&page_size=1')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.code === 200 && data.data.items && data.data.items.length > 0) {
+                            // 自动重定向到第一个品牌
+                            const firstBrand = data.data.items[0];
+                            const newUrl = new URL(window.location.href);
+                            newUrl.searchParams.set('brand_id', firstBrand.id);
+                            window.location.href = newUrl.toString();
+                        } else {
+                            loadData(); // 将显示"未选择"状态
+                        }
+                    })
+                    .catch(err => {
+                        console.error('自动加载品牌失败', err);
+                        loadData();
+                    });
             }
             
             document.getElementById('platformFilter').addEventListener('change', function() {
@@ -440,7 +456,15 @@
         }
         
         async function loadData() {
-            if (!brandId) return;
+            if (!brandId) {
+                // 如果没有选择品牌，更新头部显示
+                document.getElementById('brandName').textContent = '未选择品牌';
+                document.getElementById('totalCount').textContent = '0';
+                document.getElementById('currentPlatform').textContent = '-';
+                document.getElementById('dataContainer').innerHTML = 
+                    '<div class="empty"><div class="empty-icon">👈</div><p>请在URL中指定品牌ID或从品牌列表进入</p><p><a href="/api/v1/brands/page" class="btn">前往品牌列表</a></p></div>';
+                return;
+            }
             
             document.getElementById('dataContainer').innerHTML = '<div class="loading">加载中...</div>';
             

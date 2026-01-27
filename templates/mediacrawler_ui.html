@@ -233,8 +233,29 @@
             <p>• 数据会自动保存为JSON格式</p>
             <p>• 爬取完成后可在"查看数据"页面查看结果</p>
         </div>
+
+        <div id="active-tasks-container" style="display: none; margin-bottom: 25px;">
+            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 4px;">
+                <h3 style="color: #0d47a1; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center;">
+                    <span style="margin-right: 8px;">🔄</span> 正在运行的任务
+                </h3>
+                <div id="active-tasks-list" style="display: grid; gap: 10px;"></div>
+            </div>
+        </div>
         
         <form id="crawlerForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label for="crawl_type">爬取类型</label>
+                <select id="crawl_type" name="crawl_type" onchange="toggleInputFields()">
+                    <option value="search">关键词搜索</option>
+                    <option value="creator">博主主页爬取</option>
+                    <option value="detail">帖子详情爬取</option>
+                </select>
+                <small style="color: #666; margin-top: 5px; display: block;" id="crawl_type_hint">
+                    提示: 博主主页和帖子详情目前主要支持 抖音/小红书/快手/B站
+                </small>
+            </div>
+
             <div class="form-group">
                 <label>选择平台 * (可多选)</label>
                 <div class="platform-select">
@@ -248,9 +269,17 @@
                 <small style="color: #666; margin-top: 10px; display: block;">提示: 可以选择多个平台同时爬取</small>
             </div>
             
-            <div class="form-group">
+            <div class="form-group" id="keywords_group">
                 <label for="keywords">搜索关键词 * (多个关键词用逗号分隔)</label>
                 <input type="text" id="keywords" name="keywords" required placeholder="例如: 华为,小米">
+            </div>
+            
+            <div class="form-group" id="target_url_group" style="display: none;">
+                <label for="target_url">目标链接/ID *</label>
+                <input type="text" id="target_url" name="target_url" placeholder="请输入博主主页链接或帖子链接">
+                <small style="color: #666; margin-top: 5px; display: block;">
+                    支持完整URL、短链接或ID。对于博主主页，请输入用户主页链接。
+                </small>
             </div>
             
             <div class="form-group">
@@ -270,7 +299,7 @@
             
             <div class="form-group">
                 <div class="checkbox-group">
-                    <input type="checkbox" id="include_comments" name="include_comments" checked>
+                    <input type="checkbox" id="include_comments" name="include_comments">
                     <label for="include_comments">爬取一级评论</label>
                 </div>
                 <div class="checkbox-group">
@@ -344,7 +373,68 @@
         document.addEventListener('DOMContentLoaded', function() {
             const noteTypeGroup = document.getElementById('note_type_group');
             noteTypeGroup.style.display = 'none';
+            
+            // 检查是否有正在运行的任务
+            checkActiveTasks();
+            
+            // 初始化输入框状态
+            toggleInputFields();
         });
+        
+        function toggleInputFields() {
+            const crawlType = document.getElementById('crawl_type').value;
+            const keywordsGroup = document.getElementById('keywords_group');
+            const targetUrlGroup = document.getElementById('target_url_group');
+            const keywordsInput = document.getElementById('keywords');
+            const targetUrlInput = document.getElementById('target_url');
+            
+            if (crawlType === 'search') {
+                keywordsGroup.style.display = 'block';
+                targetUrlGroup.style.display = 'none';
+                keywordsInput.required = true;
+                targetUrlInput.required = false;
+            } else {
+                keywordsGroup.style.display = 'none';
+                targetUrlGroup.style.display = 'block';
+                keywordsInput.required = false;
+                targetUrlInput.required = true;
+            }
+        }
+        
+        // 检查活跃任务
+        async function checkActiveTasks() {
+            try {
+                const response = await fetch('/api/v1/mediacrawler/processes');
+                const data = await response.json();
+                
+                if (data.success && data.processes && data.processes.length > 0) {
+                    const activeTasks = data.processes.filter(p => p.status === 'running' || p.status === 'pending');
+                    
+                    if (activeTasks.length > 0) {
+                        const container = document.getElementById('active-tasks-container');
+                        const list = document.getElementById('active-tasks-list');
+                        
+                        list.innerHTML = '';
+                        activeTasks.forEach(task => {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'background: white; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #bbdefb;';
+                            div.innerHTML = `
+                                <div>
+                                    <span style="font-weight: 600; color: #333;">${task.platform_name}</span>
+                                    <span style="font-size: 12px; color: #666; margin-left: 10px;">关键词: ${task.keywords}</span>
+                                </div>
+                                <a href="${task.monitor_url}" target="_blank" style="font-size: 13px; color: #2196f3; font-weight: 600; text-decoration: none;">查看监控 &rarr;</a>
+                            `;
+                            list.appendChild(div);
+                        });
+                        
+                        container.style.display = 'block';
+                    }
+                }
+            } catch (e) {
+                console.error('检查活跃任务失败:', e);
+            }
+        }
         
         async function handleSubmit(event) {
             event.preventDefault();
@@ -365,19 +455,38 @@
                 return;
             }
             
-            // 验证关键词
+            // 验证参数
+            const crawlType = form.crawl_type.value;
             const keywords = form.keywords.value.trim();
-            if (!keywords) {
+            const targetUrl = form.target_url.value.trim();
+            
+            if (crawlType === 'search' && !keywords) {
                 result.style.display = 'block';
                 result.className = 'result error';
                 result.innerHTML = '<h3>❌ 请输入关键词</h3>';
                 return;
             }
             
+            if (crawlType !== 'search' && !targetUrl) {
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = '<h3>❌ 请输入目标链接</h3>';
+                return;
+            }
+            
             // 构建表单数据
             const formData = new FormData();
             formData.append('platforms', selectedPlatforms.join(','));
-            formData.append('keywords', keywords);
+            formData.append('crawl_type', crawlType);
+            
+            if (crawlType === 'search') {
+                formData.append('keywords', keywords);
+            } else {
+                formData.append('target_url', targetUrl);
+                // 为了兼容某些只看keywords的地方，可以传个占位符，或者传空
+                formData.append('keywords', 'URL_CRAWL'); 
+            }
+            
             formData.append('max_items', form.max_items.value || '10');
             formData.append('note_type', form.note_type.value || 'all');
             formData.append('include_comments', form.include_comments.checked ? 'true' : 'false');
@@ -398,7 +507,9 @@
                 console.log('发送爬取请求...', {
                     platforms: selectedPlatforms,
                     keywords: form.keywords.value,
-                    max_items: form.max_items.value
+                    max_items: form.max_items.value,
+                    crawl_type: form.crawl_type.value,
+                    target_url: form.target_url.value
                 });
                 
                 // 打印FormData内容用于调试
@@ -468,10 +579,44 @@
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    // 跳转到监控页面
-                    // 优先使用monitor_urls数组的第一个URL
-                    if (data.monitor_urls && data.monitor_urls.length > 0) {
+                    // 如果只有一个任务，直接跳转
+                    if (data.monitor_urls && data.monitor_urls.length === 1) {
                         window.location.href = data.monitor_urls[0];
+                    } else if (data.monitor_urls && data.monitor_urls.length > 1) {
+                        // 如果有多个任务，显示所有任务的链接
+                        result.style.display = 'block';
+                        result.className = 'result success';
+                        
+                        let linksHtml = `<h3>✅ 已启动 ${data.monitor_urls.length} 个爬取任务</h3>`;
+                        linksHtml += '<p style="margin: 10px 0;">请点击下方链接查看各平台爬取状态：</p><div style="display: grid; gap: 10px;">';
+                        
+                        data.monitor_urls.forEach((url, index) => {
+                            const platformCode = data.platforms ? data.platforms[index] : 'unknown';
+                            const platformName = data.platform_names ? data.platform_names[index] : platformCode;
+                            
+                            linksHtml += `
+                                <a href="${url}" target="_blank" style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; text-decoration: none; color: #333; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="font-size: 20px; margin-right: 10px;">🕷️</span>
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 16px;">${platformName}</div>
+                                            <div style="font-size: 12px; color: #666; margin-top: 2px;">进程ID: ${data.process_ids ? data.process_ids[index] : '未知'}</div>
+                                        </div>
+                                    </div>
+                                    <span style="color: #667eea; font-size: 14px; font-weight: 500;">查看监控 &rarr;</span>
+                                </a>
+                            `;
+                        });
+                        
+                        linksHtml += '</div>';
+                        
+                        // 添加一个提示，告诉用户可以在新标签页中打开
+                        linksHtml += '<p style="margin-top: 15px; font-size: 13px; color: #666;">💡 建议在新标签页中打开每个监控页面</p>';
+                        
+                        result.innerHTML = linksHtml;
+                        
+                        // 滚动到结果区域
+                        result.scrollIntoView({ behavior: 'smooth' });
                     } else if (data.monitor_url) {
                         window.location.href = data.monitor_url;
                     } else if (data.process_ids && data.process_ids.length > 0) {

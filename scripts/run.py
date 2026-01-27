@@ -40,6 +40,15 @@ def main():
     print(f"API文档: http://localhost:8000/docs")
     print("-" * 50)
     
+    # 自动打开浏览器
+    import webbrowser
+    from threading import Timer
+    def open_browser():
+        time.sleep(1.5)  # 等待服务启动
+        webbrowser.open("http://localhost:8000")
+    
+    Timer(1, open_browser).start()
+    
     try:
         # 移除 --reload 参数以避免 MediaCrawler 修改配置导致服务重启
         # 如果需要开发调试，请手动添加 --reload

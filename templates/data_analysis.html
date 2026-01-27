@@ -3,1025 +3,1075 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数据分析与AI分析</title>
+    <title>数据分析与AI洞察</title>
     <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary-color: #64748b;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding-bottom: 40px;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
+            padding: 40px 20px;
         }
-        
-        h1 {
-            color: #333;
+
+        /* Header */
+        .page-header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 40px;
+        }
+
+        .page-title {
             font-size: 32px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        .form-group {
-            margin-bottom: 25px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        
-        select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+
+        .page-subtitle {
+            color: var(--text-secondary);
             font-size: 16px;
-            transition: border-color 0.3s;
         }
-        
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .file-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 15px;
+
+        /* Recent Reports Grid */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
         }
-        
-        .file-item {
-            padding: 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .file-item:hover {
-            border-color: #667eea;
-            background: #f8f9ff;
-        }
-        
-        .file-item.selected {
-            border-color: #667eea;
-            background: #e7f3ff;
-        }
-        
-        .file-item input[type="checkbox"] {
-            margin-right: 10px;
-        }
-        
-        .file-name {
-            font-weight: 500;
-            color: #333;
-        }
-        
-        .file-info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        .checkbox-group {
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 8px;
         }
-        
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .report-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .report-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-color);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .report-card:hover::before {
+            opacity: 1;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .report-brand {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .report-badge {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            background: #ecfdf5;
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .report-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Analysis Form */
+        .analysis-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .analysis-header {
+            background: #f1f5f9;
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .analysis-body {
+            padding: 30px;
+        }
+
+        /* Steps */
+        .step-container {
+            margin-bottom: 30px;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .step-number {
+            position: absolute;
+            left: -15px;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            z-index: 2;
+        }
+
+        .step-line {
+            position: absolute;
+            left: 0;
+            top: 32px;
+            bottom: -30px;
+            width: 2px;
+            background: #e2e8f0;
+            z-index: 1;
+        }
+
+        .step-container:last-child .step-line {
+            display: none;
+        }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-left: 25px;
+            color: var(--text-main);
+        }
+
+        .step-content {
+            padding-left: 25px;
+        }
+
+        /* Platform Selection */
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .platform-option {
+            position: relative;
+        }
+
+        .platform-option input {
+            position: absolute;
+            opacity: 0;
             cursor: pointer;
         }
-        
-        .submit-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .platform-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .platform-option input:checked + .platform-card {
+            border-color: var(--primary-color);
+            background: #eef2ff;
+            color: var(--primary-color);
+        }
+
+        .platform-option input:checked + .platform-card::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--primary-color);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        /* File Selection */
+        .file-list-container {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .file-group-header {
+            padding: 10px 15px;
+            background: #e2e8f0;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+
+        .file-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background: #f1f5f9;
+        }
+
+        .file-item input {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Options */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .option-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-card:hover {
+            border-color: var(--primary-color);
+        }
+
+        .option-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .option-header input {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+
+        .option-title {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .option-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 28px;
+            line-height: 1.4;
+        }
+
+        /* Submit Button */
+        .submit-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #4338ca 100%);
             color: white;
             border: none;
-            border-radius: 8px;
+            padding: 16px 48px;
+            border-radius: 50px;
             font-size: 18px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
-        
-        .submit-btn:hover {
+
+        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
         }
-        
-        .submit-btn:disabled {
-            opacity: 0.6;
+
+        .btn-primary:disabled {
+            opacity: 0.7;
             cursor: not-allowed;
+            transform: none;
         }
-        
-        .loading {
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-outline:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        /* Loading & Result */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
             display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
             text-align: center;
-            margin-top: 20px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e2e8f0;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .progress-bar {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin: 20px 0 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .brand-selector-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+        }
+
+        .modal-card {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            padding: 24px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-body {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .brand-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .brand-item {
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .brand-item:hover {
+            border-color: var(--primary-color);
+            background: #eef2ff;
+        }
+
+        /* File Toolbar */
+        .file-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-xs {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+
+        .btn-xs:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .empty-state-text {
+            text-align: center;
+            color: var(--text-secondary);
             padding: 40px;
         }
-        
-        .loading.show {
-            display: block;
+
+        .selection-summary {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
         }
         
-        .result {
-            margin-top: 20px;
-            padding: 20px;
-            border-radius: 8px;
-            display: none;
-        }
-        
-        .result.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .result.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .nav-links {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            text-align: center;
-        }
-        
-        .nav-links a {
-            color: #667eea;
-            text-decoration: none;
-            margin: 0 15px;
-            font-weight: 500;
-        }
-        
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-        
-        .info-box {
-            background: #e7f3ff;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 25px;
-            border-radius: 4px;
-        }
-        
-        .info-box p {
-            margin: 5px 0;
-            color: #555;
-            font-size: 14px;
+        .file-date-group {
+            padding: 8px 15px;
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 5;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🤖 数据分析与AI分析</h1>
-        <p class="subtitle">整理爬取的数据并使用AI进行深度分析</p>
-        
-        <div class="info-box">
-            <p><strong>功能说明：</strong></p>
-            <p>• 选择平台和数据文件</p>
-            <p>• 系统会自动整理数据并提取文本</p>
-            <p>• 使用AI进行情感分析、关键词提取和深度分析</p>
-            <p>• 分析结果会保存并可以查看</p>
-            <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-                <strong>📊 品牌分析：</strong>
-                <button onclick="showBrandSelector()" style="margin-left: 10px; padding: 6px 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                    选择品牌生成新报告
+        <!-- Header -->
+        <header class="page-header">
+            <h1 class="page-title">数据分析与AI洞察</h1>
+            <p class="page-subtitle">选择数据文件，利用大模型进行深度情感分析与趋势洞察</p>
+            <div style="margin-top: 20px;">
+                <button onclick="showBrandSelector()" class="btn-primary" style="padding: 10px 24px; font-size: 15px;">
+                    📊 选择品牌生成报告
                 </button>
-            </p>
-        </div>
+                <a href="/api/v1/mediacrawler" class="btn-outline" style="margin-left: 10px;">返回控制台</a>
+            </div>
+        </header>
 
-        <!-- 最近分析报告列表 -->
-        <div id="recentReports" style="margin-bottom: 30px; display: none;">
-            <h3 style="margin-bottom: 15px; color: #333; font-size: 18px; display: flex; align-items: center;">
-                📈 最近生成的分析报告
-                <span style="font-size: 12px; color: #666; font-weight: normal; margin-left: 10px;">(点击查看详情)</span>
-            </h3>
-            <div id="reportList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
-                <!-- 动态加载 -->
+        <!-- Recent Reports -->
+        <section id="recentSection" style="display: none;">
+            <div class="section-header">
+                <h2 class="section-title">🕒 最近生成的报告</h2>
+                <a href="#" onclick="showBrandSelector(); return false;" style="color: var(--primary-color); text-decoration: none; font-size: 14px;">查看更多 ></a>
             </div>
-        </div>
-        
-        <!-- 品牌选择器 -->
-        <div id="brandSelector" style="display: none; margin-bottom: 25px; padding: 20px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
-            <h3 style="margin-bottom: 15px; color: #333;">选择品牌查看分析报告</h3>
-            <div id="brandList" style="margin-bottom: 15px;">
-                <div class="loading">正在加载品牌列表...</div>
+            <div id="reportList" class="reports-grid"></div>
+        </section>
+
+        <!-- Analysis Form -->
+        <section class="analysis-card">
+            <div class="analysis-header">
+                <h2 style="font-size: 20px; font-weight: 600; color: var(--text-main);">新建分析任务</h2>
             </div>
-            <button onclick="hideBrandSelector()" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                取消
-            </button>
-        </div>
-        
-        <form id="analysisForm" onsubmit="handleSubmit(event)">
-            <div class="form-group">
-                <label>选择平台 * (可多选)</label>
-                <div class="platform-select" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;">
-                    {% for platform in platforms %}
-                    <div class="platform-option" style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="platform_{{ platform.code }}" name="platform" value="{{ platform.code }}" onchange="loadFiles()">
-                        <label for="platform_{{ platform.code }}" style="cursor: pointer; margin: 0;">{{ platform.name }}</label>
+            <div class="analysis-body">
+                <form id="analysisForm" onsubmit="handleSubmit(event)">
+                    
+                    <!-- Step 1 -->
+                    <div class="step-container">
+                        <div class="step-number">1</div>
+                        <div class="step-line"></div>
+                        <h3 class="step-title">选择数据来源</h3>
+                        <div class="step-content">
+                            <div class="platform-grid">
+                                {% for platform in platforms %}
+                                <label class="platform-option">
+                                    <input type="checkbox" name="platform" value="{{ platform.code }}" onchange="loadFiles()">
+                                    <div class="platform-card">{{ platform.name }}</div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 10px;">
+                                * 支持多平台选择，系统将合并分析
+                            </p>
+                        </div>
                     </div>
-                    {% endfor %}
-                </div>
-                <small style="color: #666; margin-top: 10px; display: block;">提示: 可以选择多个平台，系统会为每个平台分别加载文件列表</small>
-            </div>
-            
-            <div class="form-group">
-                <label>选择数据文件 * (可多选)</label>
-                <div id="fileList" class="file-list">
-                    <div style="text-align: center; color: #999; padding: 20px;">
-                        请先选择平台
+
+                    <!-- Step 2 -->
+                    <div class="step-container">
+                        <div class="step-number">2</div>
+                        <div class="step-line"></div>
+                        <h3 class="step-title">选择数据文件</h3>
+                        <div class="step-content">
+                            <!-- File Toolbar -->
+                            <div class="file-toolbar">
+                                <div class="search-box">
+                                    <span class="search-icon">🔍</span>
+                                    <input type="text" id="fileSearch" placeholder="搜索文件名..." oninput="filterFiles()">
+                                </div>
+                                <div class="file-actions">
+                                    <button type="button" class="btn-xs" onclick="selectAllFiles()">全选</button>
+                                    <button type="button" class="btn-xs" onclick="clearFileSelection()">清空</button>
+                                    <button type="button" class="btn-xs" onclick="loadFiles(true)">🔄 刷新</button>
+                                </div>
+                            </div>
+                            
+                            <!-- File List -->
+                            <div id="fileList" class="file-list-container">
+                                <div class="empty-state-text">
+                                    👈 请先在上方选择平台
+                                </div>
+                            </div>
+                            
+                            <!-- Selection Summary -->
+                            <div class="selection-summary">
+                                已选择 <span id="selectedCount" style="font-weight: 600; color: var(--primary-color);">0</span> 个文件
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="include_comments" name="include_comments" checked>
-                    <label for="include_comments">包含评论数据</label>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="cross_platform" name="cross_platform" onchange="toggleAnalysisMode()">
-                    <label for="cross_platform"><strong>跨平台综合分析</strong>（合并多个平台的数据进行统一分析）</label>
-                </div>
-                <small style="color: #666; margin-top: 5px; display: block;">
-                    启用后，将合并所有选中平台的数据进行综合分析，适合对比不同平台的用户反馈
-                </small>
-            </div>
-            
-            <div class="form-group">
-                <label for="analysis_type">分析类型</label>
-                <select id="analysis_type" name="analysis_type">
-                    <option value="comprehensive">综合分析</option>
-                    <option value="brand_image">品牌形象分析</option>
-                    <option value="user_feedback">用户反馈分析</option>
-                    <option value="trend">趋势分析</option>
-                </select>
-            </div>
-            
-            <button type="submit" class="submit-btn" id="submitBtn">开始分析</button>
-        </form>
-        
-        <div class="loading" id="loading">
-            <div style="text-align: center;">
-                <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-                <p style="font-size: 18px; font-weight: 500; color: #333; margin-bottom: 10px;">正在处理数据并进行AI分析，请稍候...</p>
-                <p style="font-size: 14px; color: #666; margin-top: 10px;">这可能需要几分钟时间，请耐心等待</p>
-                <div id="loadingProgress" style="margin-top: 20px; padding: 0 20px;">
-                    <div style="background: #f0f0f0; border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 10px;">
-                        <div id="progressBar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.5s ease;"></div>
+
+                    <!-- Step 3 -->
+                    <div class="step-container">
+                        <div class="step-number">3</div>
+                        <div class="step-line"></div>
+                        <h3 class="step-title">分析配置</h3>
+                        <div class="step-content">
+                            <div class="options-grid">
+                                <label class="option-card">
+                                    <div class="option-header">
+                                        <input type="checkbox" name="include_comments" checked>
+                                        <span class="option-title">包含评论数据</span>
+                                    </div>
+                                    <p class="option-desc">分析用户评论内容，获取更真实的用户反馈情感。</p>
+                                </label>
+                                
+                                <label class="option-card">
+                                    <div class="option-header">
+                                        <input type="checkbox" name="cross_platform" id="cross_platform">
+                                        <span class="option-title">跨平台综合分析</span>
+                                    </div>
+                                    <p class="option-desc">将所有选中的数据合并分析，生成一份统一的洞察报告。</p>
+                                </label>
+
+                                <div class="option-card" style="cursor: default; border: 1px solid var(--border-color);">
+                                    <div class="option-header">
+                                        <span class="option-title">分析维度</span>
+                                    </div>
+                                    <select name="analysis_type" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                        <option value="comprehensive">全维度综合分析 (推荐)</option>
+                                        <option value="brand_image">品牌形象与认知</option>
+                                        <option value="user_feedback">用户痛点与反馈</option>
+                                        <option value="trend">市场趋势分析</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <p id="progressText" style="font-size: 12px; color: #999;">准备中...</p>
-                </div>
+
+                    <div class="submit-section">
+                        <button type="submit" class="btn-primary" id="submitBtn">
+                            <span>🚀</span> 开始深度分析
+                        </button>
+                    </div>
+                </form>
             </div>
-        </div>
-        
-        <div class="result" id="result"></div>
-        
-        <style>
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
-        
-        <div class="nav-links">
-            <a href="/api/v1/data-analysis/result">查看分析结果</a>
-            <a href="/api/v1/mediacrawler">返回爬虫控制台</a>
-            <a href="/docs">API文档</a>
+        </section>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">正在进行AI深度分析</h3>
+            <p style="color: var(--text-secondary); font-size: 14px;" id="loadingText">数据预处理中...</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
         </div>
     </div>
-    
+
+    <!-- Brand Selector Modal -->
+    <div class="brand-selector-modal" id="brandSelector">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 style="font-size: 18px; font-weight: 600;">选择品牌查看报告</h3>
+                <button onclick="hideBrandSelector()" style="border: none; background: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body" id="brandList">
+                <!-- Brands injected via JS -->
+            </div>
+        </div>
+    </div>
+
     <script>
+        // State
         let selectedFiles = new Set();
-        
-        async function loadFiles() {
-            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platform"]:checked'))
-                .map(cb => cb.value);
-            
-            if (selectedPlatforms.length === 0) {
-                document.getElementById('fileList').innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">请先选择平台</div>';
-                return;
-            }
-            
-            const fileListDiv = document.getElementById('fileList');
-            fileListDiv.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 10px; color: #666;">正在加载文件列表...</p>
-                </div>
-            `;
-            
+        let allLoadedFiles = []; // Store all fetched files for filtering
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRecentReports();
+        });
+
+        // Load Recent Reports
+        async function loadRecentReports() {
             try {
-                let html = '';
-                const platformNames = {
-                    'xhs': '小红书',
-                    'douyin': '抖音',
-                    'weibo': '微博',
-                    'zhihu': '知乎',
-                    'bilibili': 'B站',
-                    'kuaishou': '快手',
-                    'tieba': '百度贴吧'
-                };
+                const res = await fetch('/api/v1/analysis/recent?limit=4');
+                const data = await res.json();
                 
-                // 为每个选中的平台加载文件
-                for (const platform of selectedPlatforms) {
-                    const platformName = platformNames[platform] || platform;
-                    html += `<h4 style="margin-top: 20px; margin-bottom: 10px; color: #333;">${platformName} 内容数据文件:</h4>`;
+                if (data.code === 200 && data.data && data.data.length > 0) {
+                    const container = document.getElementById('reportList');
+                    document.getElementById('recentSection').style.display = 'block';
                     
-                    try {
-                        const contentsResponse = await fetch(`/api/v1/data-analysis/files?platform=${platform}&data_type=contents`);
-                        const contentsData = await contentsResponse.json();
-                        
-                        if (contentsData.success && contentsData.files.length > 0) {
-                            contentsData.files.forEach(file => {
-                                const date = new Date(file.modified_time * 1000).toLocaleString('zh-CN');
-                                const sizeKB = (file.size / 1024).toFixed(2);
-                                const fileKey = `${platform}_${file.filename}`;
-                                html += `
-                                    <div class="file-item" onclick="toggleFile('${fileKey}', '${platform}', '${file.filename}')">
-                                        <input type="checkbox" id="file_${fileKey}" value="${fileKey}" data-platform="${platform}" data-filename="${file.filename}" onchange="toggleFile('${fileKey}', '${platform}', '${file.filename}')">
-                                        <label for="file_${fileKey}" style="cursor: pointer;">
-                                            <div class="file-name">${file.filename}</div>
-                                            <div class="file-info">大小: ${sizeKB} KB | 修改时间: ${date}</div>
-                                        </label>
-                                    </div>
-                                `;
-                            });
-                        } else {
-                            html += `<div style="color: #999; padding: 10px;">暂无内容数据文件</div>`;
-                        }
-                    } catch (error) {
-                        html += `
-                            <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; margin-top: 10px;">
-                                <p style="color: #856404; font-weight: 500; margin-bottom: 5px;">⚠️ ${platformName} 加载失败</p>
-                                <p style="color: #856404; font-size: 12px;">${error.message}</p>
-                                <button onclick="loadFiles()" style="margin-top: 10px; padding: 5px 10px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">
-                                    重试
-                                </button>
+                    container.innerHTML = data.data.map(task => {
+                        const date = new Date(task.completed_at).toLocaleDateString();
+                        return `
+                            <div class="report-card" onclick="viewReport(${task.brand_id})">
+                                <div class="report-header">
+                                    <span class="report-brand">${task.brand_name}</span>
+                                    <span class="report-badge">已完成</span>
+                                </div>
+                                <div class="report-meta">
+                                    <span>📅 ${date}</span>
+                                    <span>•</span>
+                                    <span>${task.analysis_type === 'full' ? '全量分析' : '综合分析'}</span>
+                                </div>
                             </div>
                         `;
-                    }
+                    }).join('');
                 }
-                
-                if (html === '') {
-                    html = '<div style="text-align: center; color: #999; padding: 20px;">没有找到任何文件</div>';
-                }
-                
-                fileListDiv.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load reports', e);
+            }
+        }
+
+        // File Loading
+        async function loadFiles(forceRefresh = false) {
+            const platforms = Array.from(document.querySelectorAll('input[name="platform"]:checked')).map(cb => cb.value);
+            const container = document.getElementById('fileList');
+            
+            if (platforms.length === 0) {
+                container.innerHTML = '<div class="empty-state-text">👈 请先在上方选择至少一个平台</div>';
                 selectedFiles.clear();
-            } catch (error) {
-                fileListDiv.innerHTML = `
-                    <div style="padding: 20px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 5px;">
-                        <p style="color: #721c24; font-weight: 500; margin-bottom: 10px;">❌ 加载失败</p>
-                        <p style="color: #721c24; font-size: 14px; margin-bottom: 15px;">${error.message}</p>
-                        <button onclick="loadFiles()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                            重试加载
-                        </button>
-                    </div>
-                `;
-            }
-        }
-        
-        function toggleFile(fileKey, platform, filename) {
-            const checkbox = document.getElementById(`file_${fileKey}`);
-            
-            // 验证平台代码
-            if (!platform || platform.trim() === '') {
-                console.error('平台代码为空，无法选择文件');
-                alert('文件信息不完整，请刷新页面重试');
-                checkbox.checked = false;
+                updateSelectionCount();
+                allLoadedFiles = [];
                 return;
             }
-            
-            if (checkbox.checked) {
-                selectedFiles.add(JSON.stringify({platform: platform, filename: filename}));
-                checkbox.closest('.file-item').classList.add('selected');
-                console.log(`已选择文件: platform=${platform}, filename=${filename}`);
-            } else {
-                selectedFiles.delete(JSON.stringify({platform: platform, filename: filename}));
-                checkbox.closest('.file-item').classList.remove('selected');
-                console.log(`已取消选择文件: platform=${platform}, filename=${filename}`);
+
+            if (!forceRefresh && allLoadedFiles.length > 0) {
+                // If platforms changed, we might need to filter existing files or reload?
+                // For simplicity, reload if platforms change. But if just refreshing UI, use cache.
+                // Here we always reload from API to be safe, unless we implement complex caching.
+                // Wait, user might just want to filter.
             }
-        }
-        
-        function toggleAnalysisMode() {
-            const crossPlatform = document.getElementById('cross_platform').checked;
-            // 可以在这里添加一些UI提示
-            if (crossPlatform) {
-                console.log('已启用跨平台综合分析模式');
-            }
-        }
-        
-        async function handleSubmit(event) {
-            event.preventDefault();
+
+            container.innerHTML = '<div class="empty-state-text">⏳ 正在加载文件列表...</div>';
             
-            const form = event.target;
-            const selectedPlatforms = Array.from(form.querySelectorAll('input[name="platform"]:checked'))
-                .map(cb => cb.value);
-            const includeComments = form.include_comments.checked;
-            const analysisType = form.analysis_type.value;
-            const crossPlatform = form.cross_platform.checked;
+            allLoadedFiles = []; // Reset
             
-            if (selectedPlatforms.length === 0) {
-                alert('请至少选择一个平台');
-                return;
-            }
-            
-            if (selectedFiles.size === 0) {
-                alert('请至少选择一个文件');
-                return;
-            }
-            
-            // 按平台分组文件
-            const filesByPlatform = {};
-            selectedFiles.forEach(fileStr => {
-                const file = JSON.parse(fileStr);
-                if (!filesByPlatform[file.platform]) {
-                    filesByPlatform[file.platform] = [];
+            for (const platform of platforms) {
+                try {
+                    const res = await fetch(`/api/v1/data-analysis/files?platform=${platform}&data_type=all`);
+                    const data = await res.json();
+                    
+                    if (data.success && data.files.length > 0) {
+                        // Enrich file objects
+                        data.files.forEach(file => {
+                            file.platformCode = platform;
+                            file.platformName = {
+                                'xhs': '小红书', 'douyin': '抖音', 'weibo': '微博', 
+                                'zhihu': '知乎', 'bilibili': 'B站'
+                            }[platform] || platform;
+                            file.dateObj = new Date(file.modified_time * 1000);
+                            allLoadedFiles.push(file);
+                        });
+                    }
+                } catch (e) {
+                    console.error(e);
                 }
-                filesByPlatform[file.platform].push(file.filename);
+            }
+            
+            // Sort by date desc
+            allLoadedFiles.sort((a, b) => b.modified_time - a.modified_time);
+            
+            renderFileList();
+        }
+
+        function renderFileList() {
+            const container = document.getElementById('fileList');
+            const searchTerm = document.getElementById('fileSearch').value.toLowerCase();
+            
+            const filteredFiles = allLoadedFiles.filter(file => {
+                return file.filename.toLowerCase().includes(searchTerm);
             });
             
-            const loading = document.getElementById('loading');
-            const result = document.getElementById('result');
-            const submitBtn = document.getElementById('submitBtn');
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            
-            // 显示加载状态
-            loading.classList.add('show');
-            result.style.display = 'none';
-            submitBtn.disabled = true;
-            
-            // 重置进度
-            if (progressBar) progressBar.style.width = '0%';
-            if (progressText) progressText.textContent = '准备中...';
-            
-            // 模拟进度更新
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                if (progress < 90) {
-                    progress += Math.random() * 10;
-                    if (progress > 90) progress = 90;
-                    if (progressBar) progressBar.style.width = progress + '%';
-                    if (progressText) {
-                        if (progress < 30) {
-                            progressText.textContent = '正在读取数据文件...';
-                        } else if (progress < 60) {
-                            progressText.textContent = '正在提取文本内容...';
-                        } else if (progress < 80) {
-                            progressText.textContent = '正在进行AI分析...';
-                        } else {
-                            progressText.textContent = '正在生成分析报告...';
-                        }
-                    }
-                }
-            }, 500);
-            
-            // 保存interval以便清除
-            window.currentProgressInterval = progressInterval;
-            
-            try {
-                if (crossPlatform) {
-                    // 跨平台综合分析（即使只有一个平台也使用跨平台逻辑）
-                    
-                    // 验证filesByPlatform不为空
-                    if (!filesByPlatform || Object.keys(filesByPlatform).length === 0) {
-                        throw new Error('请至少选择一个文件');
-                    }
-                    
-                    // 验证每个平台至少有一个文件
-                    let hasValidFiles = false;
-                    for (const platform in filesByPlatform) {
-                        if (filesByPlatform[platform] && filesByPlatform[platform].length > 0) {
-                            hasValidFiles = true;
-                            break;
-                        }
-                    }
-                    if (!hasValidFiles) {
-                        throw new Error('请至少选择一个文件');
-                    }
-                    
-                    const formData = new FormData();
-                    
-                    // 确保files_json是有效的JSON字符串
-                    const filesJsonStr = JSON.stringify(filesByPlatform);
-                    console.log('发送的files_json:', filesJsonStr);
-                    console.log('filesByPlatform:', filesByPlatform);
-                    
-                    // 验证JSON字符串不为空
-                    if (!filesJsonStr || filesJsonStr === '{}') {
-                        throw new Error('文件数据无效，请重新选择文件');
-                    }
-                    
-                    // 确保所有值都是有效的字符串
-                    formData.append('files_json', filesJsonStr);
-                    formData.append('include_comments', includeComments ? 'true' : 'false');
-                    formData.append('analysis_type', String(analysisType || 'comprehensive').trim());
-                    formData.append('cross_platform', 'true');
-                    
-                    // 【关键修复】跨平台分析时，也传递platform和filenames参数（即使为空），避免FastAPI 422错误
-                    // 获取第一个平台作为占位符（如果后端需要）
-                    const firstPlatform = Object.keys(filesByPlatform)[0] || '';
-                    formData.append('platform', firstPlatform);
-                    // 传递第一个平台的文件名作为占位符
-                    const firstFilenames = filesByPlatform[firstPlatform] ? filesByPlatform[firstPlatform].join(',') : '';
-                    formData.append('filenames', firstFilenames);
-                    
-                    console.log('FormData内容:', {
-                        files_json: filesJsonStr.substring(0, 100) + '...',
-                        include_comments: includeComments ? 'true' : 'false',
-                        analysis_type: String(analysisType || 'comprehensive').trim(),
-                        cross_platform: 'true',
-                        platform: firstPlatform,
-                        filenames: firstFilenames
-                    });
-                    
-                    console.log('发送的FormData参数:');
-                    for (let [key, value] of formData.entries()) {
-                        console.log(key + ':', typeof value === 'string' && value.length > 100 ? value.substring(0, 100) + '...' : value);
-                    }
-                    
-                    const response = await fetch('/api/v1/data-analysis/process', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (!response.ok) {
-                        let errorMessage = `请求失败: ${response.status}`;
-                        try {
-                            const errorData = await response.json();
-                            errorMessage = errorData.error || errorData.detail || errorMessage;
-                        } catch (e) {
-                            const errorText = await response.text();
-                            errorMessage = errorText || errorMessage;
-                        }
-                        console.error('请求失败:', response.status, errorMessage);
-                        throw new Error(errorMessage);
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // 清除进度更新
-                    if (window.currentProgressInterval) {
-                        clearInterval(window.currentProgressInterval);
-                        window.currentProgressInterval = null;
-                    }
-                    
-                    // 完成进度
-                    if (progressBar) progressBar.style.width = '100%';
-                    if (progressText) progressText.textContent = '分析完成！';
-                    
-                    // 延迟隐藏加载状态，让用户看到完成动画
-                    setTimeout(() => {
-                        loading.classList.remove('show');
-                        submitBtn.disabled = false;
-                    }, 500);
-                    
-                    if (data.success && data.result) {
-                        result.style.display = 'block';
-                        result.className = 'result success';
-                        
-                        const resultData = data.result;
-                        const platformNames = resultData.platform_names || resultData.platforms || [];
-                        
-                        let resultHtml = `<h3>✅ 跨平台综合分析完成</h3>`;
-                        resultHtml += `<p><strong>分析平台:</strong> ${platformNames.join(', ')}</p>`;
-                        resultHtml += `<p><strong>总数据量:</strong> ${resultData.processed_data?.total_items || 0}条数据, ${resultData.processed_data?.total_texts || 0}条文本, ${resultData.processed_data?.total_comments || 0}条评论</p>`;
-                        
-                        // 显示各平台统计
-                        if (resultData.processed_data?.platform_stats) {
-                            resultHtml += `<div style="margin-top: 15px;"><strong>各平台数据统计:</strong></div>`;
-                            const platformNamesMap = {
-                                'xhs': '小红书',
-                                'douyin': '抖音',
-                                'weibo': '微博',
-                                'zhihu': '知乎',
-                                'bilibili': 'B站',
-                                'kuaishou': '快手',
-                                'tieba': '百度贴吧'
-                            };
-                            
-                            for (const [platform, stats] of Object.entries(resultData.processed_data.platform_stats)) {
-                                const platformName = platformNamesMap[platform] || platform;
-                                resultHtml += `
-                                    <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-                                        <p style="font-weight: bold;">${platformName}</p>
-                                        <p>数据: ${stats.total_items}条 | 文本: ${stats.texts_count}条 | 评论: ${stats.comments_count}条 | 文件: ${stats.file_count}个</p>
-                                    </div>
-                                `;
-                            }
-                        }
-                        
-                        resultHtml += `<p style="margin-top: 15px;"><strong>情感分析:</strong> 正面${resultData.sentiment_analysis?.positive_count || 0}条, 负面${resultData.sentiment_analysis?.negative_count || 0}条, 中性${resultData.sentiment_analysis?.neutral_count || 0}条</p>`;
-                        resultHtml += `<p><strong>关键词数量:</strong> ${resultData.keywords?.length || 0}个</p>`;
-                        
-                        // 显示AI洞察摘要
-                        if (resultData.llm_insights && resultData.llm_insights.summary) {
-                            resultHtml += `<div style="margin-top: 15px; padding: 15px; background: #e7f3ff; border-left: 4px solid #667eea; border-radius: 5px;">`;
-                            resultHtml += `<p style="font-weight: bold; margin-bottom: 10px;">AI分析摘要:</p>`;
-                            resultHtml += `<p style="line-height: 1.6;">${resultData.llm_insights.summary}</p>`;
-                            resultHtml += `</div>`;
-                        }
-                        
-                        resultHtml += `
-                            <div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
-                                <p style="font-weight: 500; margin-bottom: 10px;">📊 查看详细结果</p>
-                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                    <a href="/api/v1/data-analysis/result" style="padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; display: inline-block;">
-                                        查看所有分析结果
-                                    </a>
-                                    <button onclick="location.reload()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                        继续分析其他数据
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        result.innerHTML = resultHtml;
-                    } else {
-                        result.style.display = 'block';
-                        result.className = 'result error';
-                        result.innerHTML = `<h3>❌ 分析失败</h3><p>${data.error || '未知错误'}</p>`;
-                    }
-                } else {
-                    // 单平台分析（原有逻辑）
-                    console.log('使用单平台分析模式');
-                    console.log('filesByPlatform:', filesByPlatform);
-                    
-                    // 验证filesByPlatform不为空
-                    if (!filesByPlatform || Object.keys(filesByPlatform).length === 0) {
-                        throw new Error('请至少选择一个文件');
-                    }
-                    
-                    const promises = [];
-                    for (const platform in filesByPlatform) {
-                        if (!platform || platform.trim() === '') {
-                            console.error('平台代码为空，跳过');
-                            continue;
-                        }
-                        
-                        const filenameList = filesByPlatform[platform];
-                        if (!filenameList || filenameList.length === 0) {
-                            console.error(`平台 ${platform} 没有文件，跳过`);
-                            continue;
-                        }
-                        
-                        const filenames = filenameList.join(',');
-                        if (!filenames || filenames.trim() === '') {
-                            console.error(`平台 ${platform} 文件名为空，跳过`);
-                            continue;
-                        }
-                        
-                        const formData = new FormData();
-                        // 确保所有值都是有效的字符串
-                        formData.append('platform', String(platform).trim());
-                        formData.append('filenames', String(filenames).trim());
-                        formData.append('include_comments', includeComments ? 'true' : 'false');
-                        formData.append('analysis_type', String(analysisType || 'comprehensive').trim());
-                        formData.append('cross_platform', 'false');
-                        
-                        // 单平台分析时，不传递files_json参数
-                        // formData.append('files_json', '');
-                        
-                        console.log(`发送单平台分析请求: platform=${platform}, filenames=${filenames}`);
-                        console.log('FormData内容:', {
-                            platform: String(platform).trim(),
-                            filenames: String(filenames).trim(),
-                            include_comments: includeComments ? 'true' : 'false',
-                            analysis_type: String(analysisType || 'comprehensive').trim(),
-                            cross_platform: 'false'
-                        });
-                        
-                        promises.push(
-                            fetch('/api/v1/data-analysis/process', {
-                                method: 'POST',
-                                body: formData
-                            }).then(async res => {
-                                if (!res.ok) {
-                                    let errorMessage = `请求失败: ${res.status}`;
-                                    let errorDetails = null;
-                                    try {
-                                        const errorData = await res.json();
-                                        errorMessage = errorData.error || errorData.detail || errorMessage;
-                                        errorDetails = errorData;
-                                    } catch (e) {
-                                        const errorText = await res.text();
-                                        errorMessage = errorText || errorMessage;
-                                    }
-                                    console.error('请求失败:', res.status, errorMessage, errorDetails);
-                                    return { 
-                                        success: false, 
-                                        error: errorMessage,
-                                        status: res.status,
-                                        details: errorDetails
-                                    };
-                                }
-                                return res.json();
-                            }).catch(error => {
-                                console.error('请求异常:', error);
-                                return { 
-                                    success: false, 
-                                    error: `网络错误: ${error.message}`,
-                                    details: error
-                                };
-                            })
-                        );
-                    }
-                    
-                    // 验证至少有一个有效的请求
-                    if (promises.length === 0) {
-                        throw new Error('没有有效的平台和文件组合，请重新选择');
-                    }
-                    
-                    const results = await Promise.all(promises);
-                    
-                    // 清除进度更新
-                    if (window.currentProgressInterval) {
-                        clearInterval(window.currentProgressInterval);
-                        window.currentProgressInterval = null;
-                    }
-                    
-                    // 完成进度
-                    if (progressBar) progressBar.style.width = '100%';
-                    if (progressText) progressText.textContent = '分析完成！';
-                    
-                    // 延迟隐藏加载状态
-                    setTimeout(() => {
-                        loading.classList.remove('show');
-                        submitBtn.disabled = false;
-                    }, 500);
-                    
-                    const successCount = results.filter(r => r.success).length;
-                    const failCount = results.filter(r => !r.success).length;
-                    
-                    // 显示结果
-                    result.style.display = 'block';
-                    if (successCount > 0) {
-                        result.className = 'result success';
-                        let resultHtml = `<h3>✅ 分析完成</h3><p>成功: ${successCount} 个平台，失败: ${failCount} 个平台</p>`;
-                        
-                        // 显示每个平台的结果
-                        results.forEach((r, index) => {
-                            const platform = Object.keys(filesByPlatform)[index];
-                            const platformName = {
-                                'xhs': '小红书',
-                                'douyin': '抖音',
-                                'weibo': '微博',
-                                'zhihu': '知乎',
-                                'bilibili': 'B站',
-                                'kuaishou': '快手',
-                                'tieba': '百度贴吧'
-                            }[platform] || platform;
-                            
-                            if (r.success && r.result) {
-                                const resultData = r.result;
-                                resultHtml += `
-                                    <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-                                        <p style="font-weight: bold; color: #28a745;">✓ ${platformName}</p>
-                                        <p><strong>处理数据:</strong> ${resultData.processed_data?.total_items || 0}条数据, ${resultData.processed_data?.total_texts || 0}条文本, ${resultData.processed_data?.total_comments || 0}条评论</p>
-                                        <p><strong>情感分析:</strong> 正面${resultData.sentiment_analysis?.positive_count || 0}条, 负面${resultData.sentiment_analysis?.negative_count || 0}条, 中性${resultData.sentiment_analysis?.neutral_count || 0}条</p>
-                                        <p><strong>关键词数量:</strong> ${resultData.keywords?.length || 0}个</p>
-                                    </div>
-                                `;
-                            } else {
-                                const errorMsg = r.error || '分析失败';
-                                const errorDetails = r.details ? ` (详情: ${JSON.stringify(r.details)})` : '';
-                                resultHtml += `<p style="color: #dc3545;">✗ ${platformName}: ${errorMsg}${errorDetails}</p>`;
-                            }
-                        });
-                        
-                        resultHtml += `
-                            <div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
-                                <p style="font-weight: 500; margin-bottom: 10px;">📊 查看详细结果</p>
-                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                    <a href="/api/v1/data-analysis/result" style="padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; display: inline-block;">
-                                        查看所有分析结果
-                                    </a>
-                                    <button onclick="location.reload()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                        继续分析其他数据
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        result.innerHTML = resultHtml;
-                    } else {
-                        result.className = 'result error';
-                        result.innerHTML = `<h3>❌ 分析失败</h3><p>${results[0]?.error || '未知错误'}</p>`;
-                    }
-                }
-            } catch (error) {
-                // 清除进度更新
-                if (window.currentProgressInterval) {
-                    clearInterval(window.currentProgressInterval);
-                    window.currentProgressInterval = null;
-                }
-                
-                loading.classList.remove('show');
-                submitBtn.disabled = false;
-                result.style.display = 'block';
-                result.className = 'result error';
-                
-                // 更详细的错误信息
-                let errorMessage = error.message || '未知错误';
-                let errorDetails = '';
-                
-                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    errorMessage = '网络连接失败';
-                    errorDetails = '<p style="margin-top: 10px; font-size: 14px; color: #666;">请检查网络连接，确保服务器正在运行</p>';
-                } else if (error.message.includes('422') || error.message.includes('格式错误')) {
-                    errorMessage = '请求格式错误';
-                    errorDetails = '<p style="margin-top: 10px; font-size: 14px; color: #666;">请确保已正确选择平台和文件</p>';
-                } else if (error.message.includes('500') || error.message.includes('服务器错误')) {
-                    errorMessage = '服务器处理错误';
-                    errorDetails = '<p style="margin-top: 10px; font-size: 14px; color: #666;">服务器处理请求时发生错误，请稍后重试或联系管理员</p>';
-                }
-                
-                result.innerHTML = `
-                    <h3>❌ 请求失败</h3>
-                    <p style="font-weight: 500;">${errorMessage}</p>
-                    ${errorDetails}
-                    <p style="margin-top: 15px; font-size: 12px; color: #999;">错误详情: ${error.message}</p>
-                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                        刷新页面重试
-                    </button>
-                `;
+            if (filteredFiles.length === 0) {
+                container.innerHTML = '<div class="empty-state-text">未找到符合条件的文件</div>';
+                return;
             }
+            
+            let html = '';
+            let currentDate = '';
+            
+            filteredFiles.forEach(file => {
+                const dateStr = file.dateObj.toLocaleDateString();
+                
+                // Date Group Header
+                if (dateStr !== currentDate) {
+                    currentDate = dateStr;
+                    // Check if date is today/yesterday
+                    let displayDate = dateStr;
+                    const today = new Date().toLocaleDateString();
+                    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString();
+                    if (dateStr === today) displayDate = '今天';
+                    else if (dateStr === yesterday) displayDate = '昨天';
+                    
+                    html += `<div class="file-group-header">${displayDate} (${dateStr})</div>`;
+                }
+                
+                const size = (file.size / 1024).toFixed(1) + ' KB';
+                const fileData = JSON.stringify({platform: file.platformCode, filename: file.filename});
+                const isChecked = selectedFiles.has(fileData) ? 'checked' : '';
+                
+                html += `
+                    <label class="file-item">
+                        <input type="checkbox" value='${fileData}' onchange="toggleFile(this)" ${isChecked}>
+                        <div class="file-details">
+                            <div class="file-name">${file.filename}</div>
+                            <div class="file-meta">
+                                <span style="display:inline-block; padding: 2px 6px; background:#f1f5f9; border-radius:4px; margin-right:6px;">${file.platformName}</span>
+                                ${size}
+                            </div>
+                        </div>
+                    </label>
+                `;
+            });
+            
+            container.innerHTML = html;
+            updateSelectionCount();
+        }
+
+        function filterFiles() {
+            renderFileList();
+        }
+
+        function toggleFile(checkbox) {
+            if (checkbox.checked) {
+                selectedFiles.add(checkbox.value);
+            } else {
+                selectedFiles.delete(checkbox.value);
+            }
+            updateSelectionCount();
         }
         
-        // 品牌选择功能
+        function selectAllFiles() {
+            const checkboxes = document.querySelectorAll('#fileList input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                if (!cb.checked) {
+                    cb.checked = true;
+                    selectedFiles.add(cb.value);
+                }
+            });
+            updateSelectionCount();
+        }
+        
+        function clearFileSelection() {
+            const checkboxes = document.querySelectorAll('#fileList input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+                selectedFiles.delete(cb.value);
+            });
+            updateSelectionCount();
+        }
+        
+        function updateSelectionCount() {
+            document.getElementById('selectedCount').textContent = selectedFiles.size;
+        }
+
+        // Brand Selector
         async function showBrandSelector() {
-            const selector = document.getElementById('brandSelector');
-            const brandList = document.getElementById('brandList');
-            
-            selector.style.display = 'block';
-            brandList.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 10px; color: #666;">正在加载品牌列表...</p>
-                </div>
-            `;
+            const modal = document.getElementById('brandSelector');
+            const list = document.getElementById('brandList');
+            modal.style.display = 'flex';
+            list.innerHTML = '<div style="text-align: center; padding: 20px;">加载中...</div>';
             
             try {
-                const response = await fetch('/api/v1/brands?page=1&page_size=100');
-                const data = await response.json();
+                const res = await fetch('/api/v1/brands?page=1&page_size=50');
+                const data = await res.json();
                 
                 if (data.code === 200 && data.data.items.length > 0) {
-                    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">';
-                    data.data.items.forEach(brand => {
-                        html += `
-                            <div style="padding: 15px; background: white; border-radius: 8px; cursor: pointer; border: 2px solid #e0e0e0; transition: all 0.3s;" 
-                                 onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 2px 8px rgba(102,126,234,0.3)'"
-                                 onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"
-                                 onclick="viewBrandAnalysis(${brand.id}, '${brand.name}')">
-                                <h4 style="margin-bottom: 5px; color: #333;">${brand.name}</h4>
-                                <p style="font-size: 12px; color: #666;">ID: ${brand.id}</p>
-                                ${brand.description ? `<p style="font-size: 12px; color: #999; margin-top: 5px;">${brand.description.substring(0, 30)}...</p>` : ''}
-                            </div>
-                        `;
-                    });
-                    html += '</div>';
-                    brandList.innerHTML = html;
-                } else {
-                    brandList.innerHTML = `
-                        <div style="text-align: center; padding: 20px; background: #fff3cd; border-radius: 8px;">
-                            <p style="color: #856404; font-weight: 500; margin-bottom: 10px;">📋 暂无品牌数据</p>
-                            <p style="color: #856404; font-size: 14px; margin-bottom: 15px;">请先创建品牌，然后启动分析任务</p>
-                            <a href="/api/v1/brands" style="padding: 8px 16px; background: #ffc107; color: #333; text-decoration: none; border-radius: 5px; display: inline-block;">
-                                前往品牌管理
-                            </a>
+                    list.innerHTML = `
+                        <div class="brand-grid">
+                            ${data.data.items.map(brand => `
+                                <div class="brand-item" onclick="viewReport(${brand.id})">
+                                    <div style="font-weight: 600;">${brand.name}</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">ID: ${brand.id}</div>
+                                </div>
+                            `).join('')}
                         </div>
                     `;
+                } else {
+                    list.innerHTML = '<div style="text-align: center; padding: 20px;">暂无品牌数据</div>';
                 }
-            } catch (error) {
-                brandList.innerHTML = `
-                    <div style="padding: 20px; background: #f8d7da; border-left: 4px solid #dc3545; border-radius: 5px;">
-                        <p style="color: #721c24; font-weight: 500; margin-bottom: 10px;">❌ 加载失败</p>
-                        <p style="color: #721c24; font-size: 14px; margin-bottom: 15px;">${error.message}</p>
-                        <button onclick="showBrandSelector()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                            重试
-                        </button>
-                    </div>
-                `;
+            } catch (e) {
+                list.innerHTML = '<div style="text-align: center; color: var(--danger);">加载失败</div>';
             }
         }
-        
+
         function hideBrandSelector() {
             document.getElementById('brandSelector').style.display = 'none';
         }
-        
-        function viewBrandAnalysis(brandId, brandName) {
-            // 在当前窗口（iframe）打开品牌分析结果页面
-            const url = `/api/v1/brands/${brandId}/analysis/view`;
-            window.location.href = url;
-        }
-        
-        // 页面卸载时清理定时器
-        window.addEventListener('beforeunload', () => {
-            if (window.currentProgressInterval) {
-                clearInterval(window.currentProgressInterval);
-            }
-        });
 
-        // 加载最近的分析报告
-        async function loadRecentReports() {
-            try {
-                const response = await fetch('/api/v1/analysis/recent?limit=6');
-                const data = await response.json();
+        function viewReport(id) {
+            window.location.href = `/api/v1/brands/${id}/analysis/view`;
+        }
+
+        // Submit Handler
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = document.getElementById('submitBtn');
+            const overlay = document.getElementById('loadingOverlay');
+            const progressFill = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
+
+            if (selectedFiles.size === 0) {
+                alert('请至少选择一个数据文件');
+                return;
+            }
+
+            // Prepare Data
+            const filesByPlatform = {};
+            selectedFiles.forEach(jsonStr => {
+                const file = JSON.parse(jsonStr);
+                if (!filesByPlatform[file.platform]) filesByPlatform[file.platform] = [];
+                filesByPlatform[file.platform].push(file.filename);
+            });
+
+            const formData = new FormData();
+            const platform = Object.keys(filesByPlatform)[0]; // Primary platform
+            const filenames = filesByPlatform[platform].join(','); // Primary files
+
+            formData.append('platform', platform);
+            formData.append('filenames', filenames);
+            formData.append('files_json', JSON.stringify(filesByPlatform));
+            formData.append('include_comments', form.include_comments.checked);
+            formData.append('cross_platform', form.cross_platform.checked);
+            formData.append('analysis_type', form.analysis_type.value);
+
+            // UI Loading
+            overlay.style.display = 'flex';
+            submitBtn.disabled = true;
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 5;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = progress + '%';
                 
-                if (data.code === 200 && data.data.length > 0) {
-                    const listContainer = document.getElementById('reportList');
-                    let html = '';
-                    
-                    data.data.forEach(task => {
-                        // 格式化时间
-                        const date = new Date(task.completed_at);
-                        const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        
-                        html += `
-                            <div onclick="viewBrandAnalysis(${task.brand_id}, '${task.brand_name}')" 
-                                 style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                    <span style="font-weight: bold; color: #333; font-size: 16px;">${task.brand_name}</span>
-                                    <span style="font-size: 12px; color: #28a745; background: #e6f9ed; padding: 2px 6px; border-radius: 4px;">已完成</span>
-                                </div>
-                                <div style="font-size: 13px; color: #666; margin-bottom: 5px;">分析类型: ${task.analysis_type === 'full' ? '全量分析' : '综合分析'}</div>
-                                <div style="font-size: 12px; color: #999;">生成时间: ${timeStr}</div>
-                            </div>
-                        `;
-                    });
-                    
-                    listContainer.innerHTML = html;
-                    document.getElementById('recentReports').style.display = 'block';
-                    
-                    // 添加悬停效果
-                    const items = listContainer.querySelectorAll('div[onclick]');
-                    items.forEach(item => {
-                        item.onmouseover = function() {
-                            this.style.transform = 'translateY(-2px)';
-                            this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.2)';
-                            this.style.borderColor = '#667eea';
-                        };
-                        item.onmouseout = function() {
-                            this.style.transform = 'translateY(0)';
-                            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                            this.style.borderColor = '#e0e0e0';
-                        };
-                    });
+                if (progress > 30 && progress < 60) loadingText.textContent = "正在提取关键信息...";
+                if (progress > 60) loadingText.textContent = "AI 正在生成深度洞察...";
+            }, 800);
+
+            try {
+                const res = await fetch('/api/v1/data-analysis/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                clearInterval(interval);
+                progressFill.style.width = '100%';
+                
+                if (data.success) {
+                    loadingText.textContent = "分析完成！正在跳转...";
+                    setTimeout(() => {
+                        window.location.href = '/api/v1/data-analysis/result';
+                    }, 800);
+                } else {
+                    alert('分析失败: ' + (data.error || '未知错误'));
+                    overlay.style.display = 'none';
+                    submitBtn.disabled = false;
                 }
-            } catch (error) {
-                console.error('加载最近报告失败:', error);
+            } catch (err) {
+                clearInterval(interval);
+                alert('网络请求失败');
+                overlay.style.display = 'none';
+                submitBtn.disabled = false;
             }
         }
-        
-        // 页面加载时执行
-        document.addEventListener('DOMContentLoaded', loadRecentReports);
-
     </script>
 </body>
 </html>
-
-
-

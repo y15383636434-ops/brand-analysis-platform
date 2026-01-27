@@ -87,6 +87,7 @@ class MultiPlatformCrawler:
         keywords: List[str],
         max_items: int = 10,
         include_comments: bool = True,
+        download_media: bool = True,
         parallel: bool = False
     ) -> Dict:
         """
@@ -98,6 +99,7 @@ class MultiPlatformCrawler:
             keywords: 关键词列表
             max_items: 最大爬取数量
             include_comments: 是否包含评论
+            download_media: 是否下载媒体文件
             parallel: 是否并行执行（暂不支持，使用串行）
             
         Returns:
@@ -111,6 +113,7 @@ class MultiPlatformCrawler:
         print(f"平台: {', '.join([PLATFORM_NAMES.get(p, p) for p in platforms])}")
         print(f"最大数量: {max_items}")
         print(f"包含评论: {include_comments}")
+        print(f"下载媒体: {download_media}")
         print()
         
         # 检查服务（如果检查失败，继续尝试，让实际API调用来验证）
@@ -218,7 +221,8 @@ class MultiPlatformCrawler:
                 "platforms": [platform],
                 "keywords": keywords,
                 "max_items": max_items,
-                "include_comments": include_comments
+                "include_comments": include_comments,
+                "download_media": download_media
             }
             
             try:

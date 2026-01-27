@@ -198,7 +198,44 @@ def analyze_brand_task(self: Task, analysis_task_id: int):
         
         current_step += 1
         
-        # 6. 热门内容分析 (新增加)
+        # 6. 互动数据统计 (新增加)
+        logger.info("执行互动数据统计...")
+        interaction_stats = {
+            "total_likes": 0,
+            "total_comments": 0,
+            "total_shares": 0,
+            "by_platform": {}
+        }
+        
+        for item in raw_items_for_analysis:
+            platform = item.get("platform", "unknown")
+            likes = item.get("likes", 0) or 0
+            comments = item.get("comments_count", 0) or 0
+            shares = item.get("shares", 0) or 0
+            
+            # 总计
+            interaction_stats["total_likes"] += likes
+            interaction_stats["total_comments"] += comments
+            interaction_stats["total_shares"] += shares
+            
+            # 按平台
+            if platform not in interaction_stats["by_platform"]:
+                interaction_stats["by_platform"][platform] = {
+                    "likes": 0,
+                    "comments": 0,
+                    "shares": 0,
+                    "count": 0
+                }
+            
+            p_stats = interaction_stats["by_platform"][platform]
+            p_stats["likes"] += likes
+            p_stats["comments"] += comments
+            p_stats["shares"] += shares
+            p_stats["count"] += 1
+            
+        analysis_result["interaction_statistics"] = interaction_stats
+
+        # 7. 热门内容分析 (新增加)
         logger.info("执行热门内容分析...")
         top_posts = ai_service.analyze_top_posts(raw_items_for_analysis, top_k=20)
         analysis_result["top_posts"] = top_posts
@@ -216,7 +253,7 @@ def analyze_brand_task(self: Task, analysis_task_id: int):
                     "sentiment_distribution": analysis_result.get("sentiment", {}).get("distribution", {}),
                     "avg_sentiment_score": analysis_result.get("sentiment", {}).get("avg_score", 0.5),
                     "keywords": analysis_result.get("keywords", []),
-                    "top_posts_titles": [p["title"] for p in analysis_result.get("top_posts", [])[:5]]  # 提供热门标题辅助分析
+                    "top_posts": analysis_result.get("top_posts", [])[:10]  # 提供前10个热门帖子
                 }
                 
                 # 获取品牌名称
